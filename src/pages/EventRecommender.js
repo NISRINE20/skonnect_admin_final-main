@@ -234,13 +234,22 @@ function EventRecommendations() {
 
       // Normalize items
       const normalized = (list || []).map(it => {
-        const prob = Number(it.probability ?? it.prob ?? 0);
+        const predicted = Number(it.predicted_participants ?? it.participants ?? 0);
+        // Base confidence on participants: scale to [0,1], cap at 1.0.
+        // Here 1000 participants => 100% confidence. Adjust divisor if you want a different scaling.
+        const probability = Math.min(1, Math.max(0, predicted / 1000));
+
+        // If predicted participants < 500, automatically mark as not recommended.
+        // Otherwise, prefer an explicit boolean 'recommended' if provided, else derive from probability > 0.5.
+        const recommendedFromData = typeof it.recommended === "boolean" ? it.recommended : (probability > 0.5);
+        const recommended = predicted < 500 ? false : recommendedFromData;
+
         return {
           event: it.event ?? it.name ?? it.title ?? "Unnamed Event",
           description: it.description ?? "",
-          predicted_participants: Number(it.predicted_participants ?? it.participants ?? 0),
-          probability: isNaN(prob) ? 0 : prob,
-          recommended: typeof it.recommended === "boolean" ? it.recommended : (prob > 0.5)
+          predicted_participants: predicted,
+          probability,
+          recommended
         };
       });
 
