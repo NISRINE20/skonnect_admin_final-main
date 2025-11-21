@@ -261,6 +261,16 @@ const YouthPage = () => {
   const [loading, setLoading] = useState(true);
   // per-button loading keys
   const [loadingKeys, setLoadingKeys] = useState(new Set());
+  const [selectedYouth, setSelectedYouth] = useState(null);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem('skonnect_dark_mode');
+    return saved === 'true';
+  });
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const usersPerPage = 10;
 
   const startLoading = (key) => {
     setLoadingKeys(prev => {
@@ -279,13 +289,6 @@ const YouthPage = () => {
   };
 
   const isLoadingKey = (key) => loadingKeys.has(key);
-
-  const [selectedYouth, setSelectedYouth] = useState(null);
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [darkMode, setDarkMode] = useState(() => {
-    const saved = localStorage.getItem('skonnect_dark_mode');
-    return saved === 'true';
-  });
 
   const fetchYouths = async () => {
     try {
@@ -384,11 +387,21 @@ const YouthPage = () => {
       .join(' ')
       .toLowerCase()
       .includes(search.toLowerCase());
-      
     const matchesStatus = statusFilter === 'all' || youth.status === statusFilter;
-    
     return matchesSearch && matchesStatus;
   });
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredYouths.length / usersPerPage);
+  const paginatedYouths = filteredYouths.slice(
+    (currentPage - 1) * usersPerPage,
+    currentPage * usersPerPage
+  );
+
+  // Reset to first page if filter/search changes and current page is out of range
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter]);
 
   return (
     <Layout dark={darkMode}>
@@ -433,88 +446,126 @@ const YouthPage = () => {
         {loading ? (
           <p>Loading...</p>
         ) : (
-          <Table>
-            <Thead>
-              <tr>
-                <th>Name</th>
-                <th>Contact</th>
-                <th>Email</th>
-                <th>Address</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </Thead>
-            <Tbody>
-              {filteredYouths.map(youth => (
-                <tr key={youth.id}>
-                  <td>{youth.full_name}</td>
-                  <td>{youth.contact}</td>
-                  <td>{youth.email}</td>
-                  <td>{youth.complete_address}</td>
-                  <td>
-                    <Badge color={
-                      youth.status === 'accepted' ? '#059669' :
-                      youth.status === 'rejected' ? '#dc2626' :
-                      '#3b82f6'
-                    }>
-                      {youth.status || 'pending'}
-                    </Badge>
-                  </td>
-                  <td>
-                    <ActionButtons>
-                      <ViewButton onClick={() => setSelectedYouth(youth)}>
-                        <FaEye /> View
-                      </ViewButton>
-                      {youth.status === 'pending' && (
-                        <ActionButtonGroup>
+          <>
+            <Table>
+              <Thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Contact</th>
+                  <th>Email</th>
+                  <th>Address</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </Thead>
+              <Tbody>
+                {paginatedYouths.map(youth => (
+                  <tr key={youth.id}>
+                    <td>{youth.full_name}</td>
+                    <td>{youth.contact}</td>
+                    <td>{youth.email}</td>
+                    <td>{youth.complete_address}</td>
+                    <td>
+                      <Badge color={
+                        youth.status === 'accepted' ? '#059669' :
+                        youth.status === 'rejected' ? '#dc2626' :
+                        '#3b82f6'
+                      }>
+                        {youth.status || 'pending'}
+                      </Badge>
+                    </td>
+                    <td>
+                      <ActionButtons>
+                        <ViewButton onClick={() => setSelectedYouth(youth)}>
+                          <FaEye /> View
+                        </ViewButton>
+                        {youth.status === 'pending' && (
+                          <ActionButtonGroup>
+                            <ActionButton 
+                              variant="accept"
+                              onClick={() => handleStatusChange(youth.id, 'accepted')}
+                              title="Accept youth registration"
+                              disabled={isLoadingKey(`status_${youth.id}`)}
+                            >
+                              {isLoadingKey(`status_${youth.id}`) && <ButtonSpinner />}
+                              Accept
+                            </ActionButton>
+                            <ActionButton 
+                              variant="reject"
+                              onClick={() => handleStatusChange(youth.id, 'rejected')}
+                              title="Reject youth registration"
+                              disabled={isLoadingKey(`status_${youth.id}`)}
+                            >
+                              {isLoadingKey(`status_${youth.id}`) && <ButtonSpinner />}
+                              Reject
+                            </ActionButton>
+                          </ActionButtonGroup>
+                        )}
+                        {youth.status === 'rejected' && (
                           <ActionButton 
                             variant="accept"
                             onClick={() => handleStatusChange(youth.id, 'accepted')}
-                            title="Accept youth registration"
+                            title="Move to accepted"
                             disabled={isLoadingKey(`status_${youth.id}`)}
                           >
                             {isLoadingKey(`status_${youth.id}`) && <ButtonSpinner />}
-                            Accept
+                            Move to Accepted
                           </ActionButton>
+                        )}
+                        {youth.status === 'accepted' && (
                           <ActionButton 
                             variant="reject"
                             onClick={() => handleStatusChange(youth.id, 'rejected')}
-                            title="Reject youth registration"
+                            title="Move to rejected"
                             disabled={isLoadingKey(`status_${youth.id}`)}
                           >
                             {isLoadingKey(`status_${youth.id}`) && <ButtonSpinner />}
-                            Reject
+                            Move to Rejected
                           </ActionButton>
-                        </ActionButtonGroup>
-                      )}
-                      {youth.status === 'rejected' && (
-                        <ActionButton 
-                          variant="accept"
-                          onClick={() => handleStatusChange(youth.id, 'accepted')}
-                          title="Move to accepted"
-                          disabled={isLoadingKey(`status_${youth.id}`)}
-                        >
-                          {isLoadingKey(`status_${youth.id}`) && <ButtonSpinner />}
-                          Move to Accepted
-                        </ActionButton>
-                      )}
-                      {youth.status === 'accepted' && (
-                        <ActionButton 
-                          variant="reject"
-                          onClick={() => handleStatusChange(youth.id, 'rejected')}
-                          title="Move to rejected"
-                          disabled={isLoadingKey(`status_${youth.id}`)}
-                        >
-                          {isLoadingKey(`status_${youth.id}`) && <ButtonSpinner />}
-                          Move to Rejected
-                        </ActionButton>
-                      )}
-                    </ActionButtons>
-                  </td>
-                </tr>
-              ))}
-            </Tbody>
-          </Table>
+                        )}
+                      </ActionButtons>
+                    </td>
+                  </tr>
+                ))}
+              </Tbody>
+            </Table>
+            {/* Pagination Controls */}
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '1.5rem 0' }}>
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                style={{
+                  padding: '0.5rem 1rem',
+                  marginRight: '0.5rem',
+                  borderRadius: '0.375rem',
+                  border: '1px solid #e5e7eb',
+                  background: currentPage === 1 ? '#f3f4f6' : '#fff',
+                  color: '#374151',
+                  cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
+                }}
+              >
+                Previous
+              </button>
+              <span style={{ margin: '0 1rem', fontWeight: 500 }}>
+                Page {currentPage} of {totalPages || 1}
+              </span>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages || totalPages === 0}
+                style={{
+                  padding: '0.5rem 1rem',
+                  marginLeft: '0.5rem',
+                  borderRadius: '0.375rem',
+                  border: '1px solid #e5e7eb',
+                  background: currentPage === totalPages || totalPages === 0 ? '#f3f4f6' : '#fff',
+                  color: '#374151',
+                  cursor: currentPage === totalPages || totalPages === 0 ? 'not-allowed' : 'pointer'
+                }}
+              >
+                Next
+              </button>
+            </div>
+          </>
         )}
 
         {selectedYouth && (
