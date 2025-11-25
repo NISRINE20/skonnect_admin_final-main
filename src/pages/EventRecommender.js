@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import SidebarNav from "../components/Sidebar";
-import { FaSpinner, FaTrash } from "react-icons/fa";
+import { FaTrash } from "react-icons/fa";
 
 const Layout = styled.div`
   display: flex;
@@ -87,12 +87,54 @@ const MetadataContainer = styled.div`
   }
 `;
 
-const LoadingText = styled.p`
-  color: #6b7280;
-  font-size: 1rem;
+const LoadingOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(15,23,42,0.45);
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: center;
+  z-index: 9998;
+  flex-direction: column;
+`;
+
+const Spinner = styled.div`
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 4px solid rgba(255,255,255,0.12);
+  border-top-color: #fff;
+  animation: spin 0.9s linear infinite;
+  box-shadow: 0 6px 18px rgba(2,6,23,0.12);
+  margin-bottom: 12px;
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+`;
+
+/* inline small spinner used inside buttons and metadata */
+const ButtonSpinner = styled.span`
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 3px solid #f1f5f9;
+  border-top: 3px solid #2563eb;
+  animation: spin 0.9s linear infinite;
+  vertical-align: middle;
+  margin-right: 8px;
+  @keyframes spin { to { transform: rotate(360deg); } }
+`;
+
+const LoadingText = styled.div`
+  color: #ffffff;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 12px;
+`;
+
+const LoadingSubtext = styled.div`
+  color: rgba(255,255,255,0.9);
+  font-size: 0.95rem;
 `;
 
 const ErrorText = styled.p`
@@ -311,10 +353,11 @@ function EventRecommendations() {
 
         <ButtonContainer>
           <Button onClick={() => fetchRecommendations(true)} disabled={loading}>
-            <FaSpinner style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
+            {loading && <ButtonSpinner />}
             {loading ? 'Loading...' : 'Generate New Recommendations'}
           </Button>
           <DangerButton onClick={clearCache} disabled={clearingCache || !cached}>
+            {clearingCache && <ButtonSpinner />}
             <FaTrash />
             {clearingCache ? 'Clearing...' : 'Clear Cache'}
           </DangerButton>
@@ -327,7 +370,7 @@ function EventRecommendations() {
             <span>
               {cached ? (
                 <>
-                  <FaSpinner style={{ animation: 'spin 1s linear infinite' }} />
+                  <ButtonSpinner />
                   <strong>Cached Data</strong>
                 </>
               ) : (
@@ -338,7 +381,13 @@ function EventRecommendations() {
         )}
 
         {success && <SuccessText>{success}</SuccessText>}
-        {loading && <LoadingText><FaSpinner style={{ animation: 'spin 1s linear infinite' }} /> Loading recommendations...</LoadingText>}
+        {loading && (
+          <LoadingOverlay>
+            <Spinner />
+            <LoadingText>Loading recommendations...</LoadingText>
+            <LoadingSubtext>Please wait while we fetch your data</LoadingSubtext>
+          </LoadingOverlay>
+        )}
         {error && <ErrorText>Error: {error}</ErrorText>}
 
         {!loading && !error && events.length === 0 && (
@@ -383,7 +432,7 @@ function EventRecommendations() {
           </RecommendationGrid>
         )}
       </Container>
-      <style>{spin}</style>
+      {/* removed legacy spin CSS in favor of styled components above */}
     </Layout>
   );
 }

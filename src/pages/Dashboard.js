@@ -845,7 +845,7 @@ const Dashboard = () => {
               {/* Modal header with title (close button removed) */}
               <NotificationHeader>
                 <NotificationTitle>
-                  💬 Comments
+                  💬 Notification
                 </NotificationTitle>
               </NotificationHeader>
 
@@ -916,25 +916,26 @@ const Dashboard = () => {
         <Sidebar darkMode={darkMode} />
         <Main>
 
-        <Topbar>
-          <DashboardTitle>
-            <h2>Dashboard</h2>
-            <p>Hi, Admin. Welcome back to SKonnect Admin!</p>
+        <Topbar style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <DashboardTitle style={{ margin: 0 }}>
+            <h2 style={{ margin: 0 }}>Dashboard</h2>
+            <p style={{ margin: 0 }}>Hi, Admin. Welcome back to SKonnect Admin!</p>
           </DashboardTitle>
-
-          {/* ---------- IMPROVED: Notification Bell Button (top-right corner) ---------- */}
-        <NotificationButton
-                 aria-label="Comments notifications"
-                 onClick={handleToggleNotificationModal}
-                 style={{ position: 'relative' }}
-                 title={unreadComments > 0 ? `${unreadComments} new comment(s)` : 'No new comments'}
-               >
-                 <FaBell />
-                 {unreadComments > 0 && (
-                   <NotificationBadge>{unreadComments > 99 ? '99+' : unreadComments}</NotificationBadge>
-                 )}
-        </NotificationButton>
-
+          
+          {/* Notification Bell aligned to the right of the title */}
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <NotificationButton
+              aria-label="Comments notifications"
+              onClick={handleToggleNotificationModal}
+              title={unreadComments > 0 ? `${unreadComments} new comment(s)` : 'No new comments'}
+              style={{ display: 'inline-flex', alignItems: 'center' }}
+            >
+              <FaBell />
+              {unreadComments > 0 && (
+                <NotificationBadge>{unreadComments > 99 ? '99+' : unreadComments}</NotificationBadge>
+              )}
+            </NotificationButton>
+          </div>
         </Topbar>
         
           <Grid>

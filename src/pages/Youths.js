@@ -197,6 +197,41 @@ const ButtonSpinner = styled.span`
   }
 `;
 
+/* ---------- ADD: Page loading overlay + spinner (match Dashboard style) ---------- */
+const LoadingOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(255,255,255,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9998;
+  flex-direction: column;
+`;
+
+const Spinner = styled.div`
+  border: 4px solid #e5e7eb;
+  border-top: 4px solid #2563eb;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  animation: spin 0.9s linear infinite;
+  margin-bottom: 12px;
+  @keyframes spin { to { transform: rotate(360deg); } }
+`;
+
+const LoadingText = styled.div`
+  color: #374151;
+  font-size: 1rem;
+  font-weight: 700;
+  margin-top: 0;
+`;
+
+const LoadingSubtext = styled.div`
+  color: #374151;
+  font-size: 0.95rem;
+`;
+
 const FilterBar = styled.div`
   display: flex;
   gap: 1rem;
@@ -255,6 +290,42 @@ const ActionButton = styled.button`
   }
 `;
 
+const AuthModalOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(15,23,42,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+`;
+
+const AuthModalBox = styled.div`
+  background: #fff;
+  color: #0f172a;
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+  width: 360px;
+  box-shadow: 0 10px 30px rgba(2,6,23,0.12);
+`;
+
+const AuthInput = styled.input`
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.75rem;
+`;
+
+const AuthActions = styled.div`
+  display:flex;
+  gap:0.5rem;
+  justify-content:flex-end;
+`;
+
+/* ---------- Admin auth modal (require password before sensitive actions) ---------- */
+
 const YouthPage = () => {
   const [youths, setYouths] = useState([]);
   const [search, setSearch] = useState('');
@@ -262,7 +333,7 @@ const YouthPage = () => {
   // per-button loading keys
   const [loadingKeys, setLoadingKeys] = useState(new Set());
   const [selectedYouth, setSelectedYouth] = useState(null);
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('pending');
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('skonnect_dark_mode');
     return saved === 'true';
@@ -271,6 +342,13 @@ const YouthPage = () => {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const usersPerPage = 10;
+
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authAction, setAuthAction] = useState(null); // 'view' | 'accept'
+  const [authTarget, setAuthTarget] = useState(null); // youth object or id
+  const [authPassword, setAuthPassword] = useState("");
+  const [authError, setAuthError] = useState(null);
+  const [authLoading, setAuthLoading] = useState(false);
 
   const startLoading = (key) => {
     setLoadingKeys(prev => {
@@ -403,12 +481,89 @@ const YouthPage = () => {
     setCurrentPage(1);
   }, [search, statusFilter]);
 
+  const requestAdminAuth = (action, target) => {
+    setAuthAction(action);
+    setAuthTarget(target);
+    setAuthPassword("");
+    setAuthError(null);
+    setAuthOpen(true);
+  };
+
+  const verifyAdminPassword = async (password) => {
+    setAuthLoading(true);
+    try {
+
+      const ADMIN_PASSWORD = process.env.REACT_APP_ADMIN_PASSWORD || 'admin123';
+
+
+      const constantTimeCompare = (a, b) => {
+        if (a.length !== b.length) return false;
+        let result = 0;
+        for (let i = 0; i < a.length; i++) result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+        return result === 0;
+      };
+
+
+      const ok = constantTimeCompare(password, ADMIN_PASSWORD);
+      setAuthLoading(false);
+      return ok;
+    } catch (err) {
+      setAuthLoading(false);
+      console.error("Auth verify error", err);
+      return false;
+    }
+  };
+
+  const handleAuthConfirm = async () => {
+    setAuthError(null);
+    const ok = await verifyAdminPassword(authPassword);
+    if (!ok) {
+      setAuthError("Invalid admin password");
+      return;
+    }
+
+    // password valid -> perform action
+    try {
+      if (authAction === "view") {
+        // show youth details (authTarget is the youth object)
+        setSelectedYouth(authTarget);
+        setAuthOpen(false);
+        return;
+      }
+
+      if (authAction === "accept" || authAction === "reject") {
+        // authTarget is the youth id for status changes
+        const newStatus = authAction === "accept" ? "accepted" : "rejected";
+        await handleStatusChange(authTarget, newStatus);
+        setAuthOpen(false);
+        return;
+      }
+    } catch (err) {
+      console.error("Auth action error", err);
+      setAuthError("An error occurred while performing the action");
+    }
+  };
+
+  // helper: invoked from UI instead of direct actions
+  // Example usage in JSX:
+  // onClick={() => requestAdminAuth('view', youth)}
+  // onClick={() => requestAdminAuth('accept', youth.id)}
+
   return (
     <Layout dark={darkMode}>
       <SidebarNav darkMode={darkMode} />
       <PageWrapper dark={darkMode}>
         <Title>Youth Directory</Title>
-        
+
+        {/* ---------- SHOW full-page loading overlay when loading ---------- */}
+        {loading && (
+          <LoadingOverlay>
+            <Spinner />
+            <LoadingText>Loading Youth Directory...</LoadingText>
+            <LoadingSubtext>Please wait while we fetch your data</LoadingSubtext>
+          </LoadingOverlay>
+        )}
+
         <FilterBar>
           <FilterButton 
             active={statusFilter === 'all'} 
@@ -443,9 +598,7 @@ const YouthPage = () => {
           onChange={e => setSearch(e.target.value)}
         />
         
-        {loading ? (
-          <p>Loading...</p>
-        ) : (
+        {!loading && (
           <>
             <Table>
               <Thead>
@@ -476,14 +629,14 @@ const YouthPage = () => {
                     </td>
                     <td>
                       <ActionButtons>
-                        <ViewButton onClick={() => setSelectedYouth(youth)}>
+                        <ViewButton onClick={() => requestAdminAuth('view', youth)}>
                           <FaEye /> View
                         </ViewButton>
                         {youth.status === 'pending' && (
                           <ActionButtonGroup>
                             <ActionButton 
                               variant="accept"
-                              onClick={() => handleStatusChange(youth.id, 'accepted')}
+                              onClick={() => requestAdminAuth('accept', youth.id)}
                               title="Accept youth registration"
                               disabled={isLoadingKey(`status_${youth.id}`)}
                             >
@@ -492,7 +645,7 @@ const YouthPage = () => {
                             </ActionButton>
                             <ActionButton 
                               variant="reject"
-                              onClick={() => handleStatusChange(youth.id, 'rejected')}
+                              onClick={() => requestAdminAuth('reject', youth.id)}
                               title="Reject youth registration"
                               disabled={isLoadingKey(`status_${youth.id}`)}
                             >
@@ -504,7 +657,7 @@ const YouthPage = () => {
                         {youth.status === 'rejected' && (
                           <ActionButton 
                             variant="accept"
-                            onClick={() => handleStatusChange(youth.id, 'accepted')}
+                            onClick={() => requestAdminAuth('accept', youth.id)}
                             title="Move to accepted"
                             disabled={isLoadingKey(`status_${youth.id}`)}
                           >
@@ -515,7 +668,7 @@ const YouthPage = () => {
                         {youth.status === 'accepted' && (
                           <ActionButton 
                             variant="reject"
-                            onClick={() => handleStatusChange(youth.id, 'rejected')}
+                            onClick={() => requestAdminAuth('reject', youth.id)}
                             title="Move to rejected"
                             disabled={isLoadingKey(`status_${youth.id}`)}
                           >
@@ -629,6 +782,37 @@ const YouthPage = () => {
               </Section>
             </ModalContent>
           </Modal>
+        )}
+
+        {authOpen && (
+          <AuthModalOverlay onClick={() => setAuthOpen(false)}>
+            <AuthModalBox onClick={e => e.stopPropagation()}>
+              <h3 style={{ margin: 0, marginBottom: 8 }}>
+                {authAction === "view" ? "Admin Password Required" : "Confirm Accept Account"}
+              </h3>
+              <div style={{ fontSize: 0.95, color: "#475569" }}>
+                {authAction === "view" ? "Enter admin password to view youth details." : "Enter admin password to move this rejected account to accepted."}
+              </div>
+              <AuthInput
+                type="password"  
+                value={authPassword}
+                onChange={e => setAuthPassword(e.target.value)}
+                placeholder="Admin password"
+                autoFocus
+              />
+              {authError && <div style={{ color: "#b91c1c", marginBottom: 8 }}>{authError}</div>}
+              <AuthActions>
+                <button onClick={() => setAuthOpen(false)} style={{ padding: "0.5rem 0.75rem", borderRadius: 6 }}>Cancel</button>
+                <button
+                  onClick={handleAuthConfirm}
+                  disabled={authLoading || !authPassword}
+                  style={{ background: "#2563eb", color: "#fff", padding: "0.5rem 0.75rem", borderRadius: 6, border: "none" }}
+                >
+                  {authLoading ? "Verifying..." : "Confirm"}
+                </button>
+              </AuthActions>
+            </AuthModalBox>
+          </AuthModalOverlay>
         )}
       </PageWrapper>
     </Layout>

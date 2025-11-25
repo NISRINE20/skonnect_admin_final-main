@@ -63,11 +63,11 @@ const MessageText = styled.p`
   font-weight: 600;
 `;
 
-/* --- Loading / Spinner components --- */
+/* --- Loading / Spinner components (match Dashboard style) --- */
 const LoadingOverlay = styled.div`
   position: fixed;
   inset: 0;
-  background: rgba(255,255,255,0.7);
+  background: rgba(15,23,42,0.45);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -76,13 +76,15 @@ const LoadingOverlay = styled.div`
 `;
 
 const Spinner = styled.div`
-  border: 4px solid #e5e7eb;
-  border-top: 4px solid #2563eb;
-  border-radius: 50%;
   width: 48px;
   height: 48px;
+  border-radius: 50%;
+  border: 4px solid rgba(255,255,255,0.12);
+  border-top-color: #fff;
   animation: spin 0.9s linear infinite;
+  box-shadow: 0 6px 18px rgba(2,6,23,0.12);
   margin-bottom: 12px;
+
   @keyframes spin { to { transform: rotate(360deg); } }
 `;
 
@@ -94,6 +96,18 @@ const InlineSpinner = styled.div`
   height: 16px;
   animation: spin 0.9s linear infinite;
   margin-left: 8px;
+`;
+
+const LoadingText = styled.div`
+  color: #ffffff;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 12px;
+`;
+
+const LoadingSubtext = styled.div`
+  color: rgba(255,255,255,0.9);
+  font-size: 0.95rem;
 `;
 
 /* ---------------- API Helper ---------------- */

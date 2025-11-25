@@ -15,7 +15,7 @@ import {
   ModalButton,
 } from "../styles/CalendarStyles";
 import styled from "styled-components";
-import { FaSearch, FaSpinner } from "react-icons/fa";
+import { FaSearch } from "react-icons/fa";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -50,27 +50,41 @@ const CalendarEventContent = styled.div`
 `;
 
 const LoadingOverlay = styled.div`
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(255, 255, 255, 0.8);
+  position: fixed;
+  inset: 0;
+  background: rgba(15,23,42,0.45);
   display: flex;
-  justify-content: center;
   align-items: center;
-  z-index: 100;
+  justify-content: center;
+  z-index: 9998;
+  flex-direction: column;
 `;
 
-const SpinnerIcon = styled(FaSpinner)`
-  color: #3b82f6;
-  font-size: 2rem;
-  animation: spin 1s linear infinite;
+const Spinner = styled.div`
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 4px solid rgba(255,255,255,0.12);
+  border-top-color: #fff;
+  animation: spin 0.9s linear infinite;
+  box-shadow: 0 6px 18px rgba(2,6,23,0.12);
 
   @keyframes spin {
-    from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
   }
+`;
+
+/* added loading text/subtext to match Dashboard style */
+const LoadingText = styled.div`
+  color: #ffffff;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 12px;
+`;
+
+const LoadingSubtext = styled.div`
+  color: rgba(255,255,255,0.9);
+  font-size: 0.95rem;
 `;
 
 const SearchResults = styled.div`
@@ -234,7 +248,11 @@ const fetchEvents = async () => {
           <h2 className="font-bold text-lg mb-1">Calendar of Activities</h2>
           <div style={{ position: 'relative' }}>
             {loading && (
-              <LoadingOverlay><SpinnerIcon /></LoadingOverlay>
+              <LoadingOverlay>
+                <Spinner />
+                <LoadingText>Loading Calendar...</LoadingText>
+                <LoadingSubtext>Please wait while we fetch your data</LoadingSubtext>
+              </LoadingOverlay>
             )}
 
             <FullCalendar

@@ -144,11 +144,21 @@ function AIUsageChart() {
 
   // Return loading state or error state if no data
   if (isLoading) {
-    return <div>Loading chart data...</div>;
+    return (
+      <LoadingOverlay>
+        <Spinner />
+        <LoadingText>Loading AI usage...</LoadingText>
+        <LoadingSubtext>Please wait while we fetch your data</LoadingSubtext>
+      </LoadingOverlay>
+    );
   }
 
   if (!data.length) {
-    return <div>No data available</div>;
+    return (
+      <LoadingOverlay>
+        <LoadingText>No AI usage data available</LoadingText>
+      </LoadingOverlay>
+    );
   }
 
   const chartData = {
@@ -241,8 +251,22 @@ function EngagementsBarChart() {
     return () => { mounted = false; };
   }, []);
 
-  if (loading) return <div>Loading engagements chart...</div>;
-  if (!chartData) return <div>No engagement data available</div>;
+  if (loading) {
+    return (
+      <LoadingOverlay>
+        <Spinner />
+        <LoadingText>Loading engagements...</LoadingText>
+        <LoadingSubtext>Fetching engagements data</LoadingSubtext>
+      </LoadingOverlay>
+    );
+  }
+  if (!chartData) {
+    return (
+      <LoadingOverlay>
+        <LoadingText>No engagement data available</LoadingText>
+      </LoadingOverlay>
+    );
+  }
 
   const options = {
     responsive: true,
@@ -307,8 +331,22 @@ function EventsPerMonthChart() {
     return () => { mounted = false; };
   }, []);
 
-  if (loading) return <div>Loading events chart...</div>;
-  if (!chartData) return <div>No events data available</div>;
+  if (loading) {
+    return (
+      <LoadingOverlay>
+        <Spinner />
+        <LoadingText>Loading events data...</LoadingText>
+        <LoadingSubtext>Please wait while we fetch your data</LoadingSubtext>
+      </LoadingOverlay>
+    );
+  }
+  if (!chartData) {
+    return (
+      <LoadingOverlay>
+        <LoadingText>No events data available</LoadingText>
+      </LoadingOverlay>
+    );
+  }
 
   const options = {
     indexAxis: 'y', // horizontal bars (unique visual)
@@ -374,8 +412,22 @@ function SubEventsPerMonthChart() {
     return () => { mounted = false; };
   }, []);
 
-  if (loading) return <div>Loading activities chart...</div>;
-  if (!chartData) return <div>No activities data available</div>;
+  if (loading) {
+    return (
+      <LoadingOverlay>
+        <Spinner />
+        <LoadingText>Loading activities...</LoadingText>
+        <LoadingSubtext>Please wait while we fetch your data</LoadingSubtext>
+      </LoadingOverlay>
+    );
+  }
+  if (!chartData) {
+    return (
+      <LoadingOverlay>
+        <LoadingText>No activities data available</LoadingText>
+      </LoadingOverlay>
+    );
+  }
 
   const options = {
     indexAxis: 'y',
@@ -1004,6 +1056,8 @@ const insights = generateInsights({
             >
               {isGenerating ? <FaSpinner className="spin" /> : <FaDownload />}
               {isGenerating ? 'Generating...' : 'Generate Monthly Report'}
+              {isGenerating ? <ButtonSpinner /> : <FaDownload />}
+              {isGenerating ? 'Generating...' : 'Generate Monthly Report'}
             </button>
           </div>
 
@@ -1041,57 +1095,111 @@ const insights = generateInsights({
           <PlaceholderBox ref={el => placeholderRefs.current[5] = el}>
             <h3>📝 Youth Reviews</h3>
             {reviewsLoading ? (
-              <p>Loading reviews...</p>
+              <LoadingOverlay>
+                <Spinner />
+                <LoadingText>Loading reviews...</LoadingText>
+                <LoadingSubtext>Fetching recent feedback</LoadingSubtext>
+              </LoadingOverlay>
             ) : (
-              <>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-                  {reviews.slice(0,4).map((r, i) => (
-                    <div key={r.id || i} style={{
-                      display: 'flex', gap: 12, alignItems: 'flex-start',
-                      background: darkMode ? '#0b1220' : '#fff', padding: 12, borderRadius: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
-                    }}>
-                      <img
-                        src={logo}                                // always generic avatar
-                        alt={'Anonymous User'}                         // never show real name
-                        style={{ width: 48, height: 48, borderRadius: 9999, objectFit: 'cover', flexShrink: 0 }}
-                        onError={(e) => { e.target.onerror = null; e.target.src = logo; }}
-                      />
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                          <strong style={{ fontSize: 14 }}>{'Anonymous'}</strong>
-                          <span style={{ fontSize: 12, color: darkMode ? '#9aa4b2' : '#6b7280' }}>{r.created_at ? (new Date(r.created_at)).toLocaleDateString() : ''}</span>
-                        </div>
-                        <p style={{
-                          margin: '6px 0 0', fontSize: 13, color: darkMode ? '#cbd5e1' : '#475569',
-                          overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical'
-                        }}>{r.message}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+               <>
+                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+                   {reviews.slice(0,4).map((r, i) => (
+                     <div key={r.id || i} style={{
+                       display: 'flex', gap: 12, alignItems: 'flex-start',
+                       background: darkMode ? '#0b1220' : '#fff', padding: 12, borderRadius: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+                     }}>
+                       <img
+                         src={logo}                                // always generic avatar
+                         alt={'Anonymous User'}                         // never show real name
+                         style={{ width: 48, height: 48, borderRadius: 9999, objectFit: 'cover', flexShrink: 0 }}
+                         onError={(e) => { e.target.onerror = null; e.target.src = logo; }}
+                       />
+                       <div style={{ minWidth: 0 }}>
+                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                           <strong style={{ fontSize: 14 }}>{'Anonymous'}</strong>
+                           <span style={{ fontSize: 12, color: darkMode ? '#9aa4b2' : '#6b7280' }}>{r.created_at ? (new Date(r.created_at)).toLocaleDateString() : ''}</span>
+                         </div>
+                         <p style={{
+                           margin: '6px 0 0', fontSize: 13, color: darkMode ? '#cbd5e1' : '#475569',
+                           overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical'
+                         }}>{r.message}</p>
+                       </div>
+                     </div>
+                   ))}
+                 </div>
 
-                {reviews.length === 0 && <p style={{ marginTop: 12 }}>No reviews yet.</p>}
+                 {reviews.length === 0 && <p style={{ marginTop: 12 }}>No reviews yet.</p>}
 
-                {reviews.length > 4 && (
-                  <div style={{ marginTop: 12, textAlign: 'right' }}>
-                    <button
-                      onClick={() => window.location.href = '/comments'}
-                      style={{
-                        background: '#2563eb', color: '#fff', border: 'none', padding: '8px 12px',
-                        borderRadius: 8, cursor: 'pointer'
-                      }}
-                    >
-                      View all ({reviews.length}) comments
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
-          </PlaceholderBox>
-        </Main>
-      </Container>
-    </>
-  );
-};
+                 {reviews.length > 4 && (
+                   <div style={{ marginTop: 12, textAlign: 'right' }}>
+                     <button
+                       onClick={() => window.location.href = '/comments'}
+                       style={{
+                         background: '#2563eb', color: '#fff', border: 'none', padding: '8px 12px',
+                         borderRadius: 8, cursor: 'pointer'
+                       }}
+                     >
+                       View all ({reviews.length}) comments
+                     </button>
+                   </div>
+                 )}
+               </>
+             )}
+           </PlaceholderBox>
+         </Main>
+       </Container>
+     </>
+   );
+ };
 
-export default Analytics;
+ export default Analytics;
+
+/* ---------- Dashboard-style loading components (place right after GlobalStyle) ---------- */
+const LoadingOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(15,23,42,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9998;
+  flex-direction: column;
+`;
+
+const Spinner = styled.div`
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 4px solid rgba(255,255,255,0.12);
+  border-top-color: #fff;
+  animation: spin 0.9s linear infinite;
+  box-shadow: 0 6px 18px rgba(2,6,23,0.12);
+  margin-bottom: 12px;
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+`;
+
+const ButtonSpinner = styled.span`
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 3px solid #f1f5f9;
+  border-top: 3px solid #2563eb;
+  animation: spin 0.9s linear infinite;
+  vertical-align: middle;
+  margin-right: 8px;
+  @keyframes spin { to { transform: rotate(360deg); } }
+`;
+
+const LoadingText = styled.div`
+  color: #ffffff;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 12px;
+`;
+
+const LoadingSubtext = styled.div`
+  color: rgba(255,255,255,0.9);
+  font-size: 0.95rem;
+`;

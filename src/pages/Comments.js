@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import styled from "styled-components";
 import {
   FaBell,
   FaComments,
@@ -86,8 +87,56 @@ const Comments = () => {
 
   // replaced static comments with fetched data
   const [comments, setComments] = useState([]);
+  const [eventsMap, setEventsMap] = useState({}); // id -> title
+  const [sortOption, setSortOption] = useState("newest"); // newest | oldest | rating_desc | rating_asc
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // fetch main events to resolve event_id -> event title
+  useEffect(() => {
+    let mounted = true;
+    async function fetchEvents() {
+      try {
+        const res = await fetch("https://vynceianoani.helioho.st/skonnect-api/get_main_events.php");
+        if (!res.ok) throw new Error("Failed to load events");
+        const data = await res.json();
+        let list = Array.isArray(data) ? data : (Array.isArray(data.main_events) ? data.main_events : (Array.isArray(data.events) ? data.events : (Array.isArray(data.data) ? data.data : [])));
+        const map = {};
+        list.forEach(ev => { if (ev && (ev.id || ev.event_id)) map[ev.id || ev.event_id] = ev.title || ev.name || `Event #${ev.id || ev.event_id}`; });
+        if (mounted) setEventsMap(map);
+      } catch (err) {
+        console.warn("Could not fetch events for comments mapping:", err);
+      }
+    }
+    fetchEvents();
+    return () => { mounted = false; };
+  }, []);
+
+  // derive sorted & display-ready comments
+  const displayedComments = React.useMemo(() => {
+    const copy = comments.slice();
+    // sort
+    copy.sort((a, b) => {
+      if (sortOption === "newest") {
+        return (new Date(b.created_at || b.time)).getTime() - (new Date(a.created_at || a.time)).getTime();
+      }
+      if (sortOption === "oldest") {
+        return (new Date(a.created_at || a.time)).getTime() - (new Date(b.created_at || b.time)).getTime();
+      }
+      if (sortOption === "rating_desc") {
+        return (b.rating || 0) - (a.rating || 0);
+      }
+      if (sortOption === "rating_asc") {
+        return (a.rating || 0) - (b.rating || 0);
+      }
+      return 0;
+    });
+    // ensure event_title exists for display
+    return copy.map(c => ({
+      ...c,
+      event_title: c.event_title || eventsMap[c.event_id] || (c.event_id ? `Event #${c.event_id}` : "General")
+    }));
+  }, [comments, eventsMap, sortOption]);
 
   useEffect(() => {
     let mounted = true;
@@ -187,16 +236,39 @@ const Comments = () => {
       <SidebarNav darkMode={darkMode} />
 
       <ContentWrapper dark={darkMode}>
-        <Heading dark={darkMode}>Comments</Heading>
+          <Heading dark={darkMode} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <FaComments style={{ color: '#2563eb', fontSize: 20 }} />
+          Comments
+         </Heading>
         <SubHeading dark={darkMode}>
-          Manage and review user comments below (anonymous).
+          Manage and Review User Comments
         </SubHeading>
 
-        {loading && <div>Loading comments...</div>}
+        {/* Sorting control */}
+        <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
+          <label style={{ color: darkMode ? "#e5e7eb" : "#374151", fontWeight: 600 }}>Sort:</label>
+          <select value={sortOption} onChange={e => setSortOption(e.target.value)} style={{ padding: "6px 10px", borderRadius: 6 }}>
+            <option value="newest">Newest</option>
+            <option value="oldest">Oldest</option>
+            <option value="rating_desc">Top Rated</option>
+            <option value="rating_asc">Lowest Rated</option>
+          </select>
+          <div style={{ marginLeft: "auto", color: "#6b7280", fontSize: 13 }}>
+            Showing {displayedComments.length} comment{displayedComments.length !== 1 ? "s" : ""}
+          </div>
+        </div>
+
+        {loading && (
+          <LoadingOverlay>
+            <Spinner />
+            <LoadingText>Loading comments...</LoadingText>
+            <LoadingSubtext>Please wait while we fetch your data</LoadingSubtext>
+          </LoadingOverlay>
+        )}
         {error && <div style={{ color: "red" }}>{error}</div>}
 
         <CommentsList>
-          {comments.map((comment, index) => (
+          {displayedComments.map((comment, index) => (
             <CommentCardComponent
               key={comment.id || index}
               {...comment}
@@ -210,3 +282,40 @@ const Comments = () => {
 };
 
 export default Comments;
+
+/* ---------- Dashboard-style loading components ---------- */
+const LoadingOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(15,23,42,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9998;
+  flex-direction: column;
+`;
+
+const Spinner = styled.div`
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 4px solid rgba(255,255,255,0.12);
+  border-top-color: #fff;
+  animation: spin 0.9s linear infinite;
+  box-shadow: 0 6px 18px rgba(2,6,23,0.12);
+  margin-bottom: 12px;
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+`;
+
+const LoadingText = styled.div`
+  color: #ffffff;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 12px;
+`;
+
+const LoadingSubtext = styled.div`
+  color: rgba(255,255,255,0.9);
+  font-size: 0.95rem;
+`;

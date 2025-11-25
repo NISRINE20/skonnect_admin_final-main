@@ -31,38 +31,43 @@ import styled from "styled-components";
 import SidebarNav from "../components/Sidebar";
 import { FaBullhorn, FaStar, FaTrash, FaImage, FaEdit } from "react-icons/fa";
 
-/* --- Added loading overlay styles --- */
+/* --- Revised loading overlay styles to match Dashboard --- */
 const LoadingOverlay = styled.div`
   position: fixed;
   inset: 0;
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(15,23,42,0.45);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 9999;
+  z-index: 9998;
   flex-direction: column;
 `;
 
 const Spinner = styled.div`
-  border: 4px solid #e5e7eb;
-  border-top: 4px solid #2563eb;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  width: 56px;
-  height: 56px;
+  border: 4px solid rgba(255,255,255,0.12);
+  border-top-color: #fff;
   animation: spin 0.9s linear infinite;
+  box-shadow: 0 6px 18px rgba(2,6,23,0.12);
   margin-bottom: 12px;
 
   @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
+    to { transform: rotate(360deg); }
   }
 `;
 
 const LoadingText = styled.div`
-  font-size: 0.95rem;
-  color: #374151;
+  color: #ffffff;
+  font-size: 1.1rem;
   font-weight: 600;
+  margin-top: 12px;
+`;
+
+const LoadingSubtext = styled.div`
+  color: rgba(255,255,255,0.9);
+  font-size: 0.95rem;
 `;
 
 export default function Announcements() {
@@ -280,11 +285,23 @@ export default function Announcements() {
         setShowDeleteModal(false);
         setItemToDelete(null);
       }
-    } else {
-      // Existing highlight deletion logic
+    } else if (itemToDelete.type === "highlight") {
+      // use same modal confirmation flow for highlights
       try {
-        // If highlight deletion should call API, do it here. For now update UI.
-        setHighlights(prev => prev.filter(h => h.id !== itemToDelete.id));
+        const res = await fetch('https://vynceianoani.helioho.st/skonnect-api/delete_highlight.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: itemToDelete.id })
+        });
+        const result = await res.json();
+        if (result.success) {
+          setHighlights(prev => prev.filter(h => h.id !== itemToDelete.id));
+        } else {
+          alert(result.error || 'Failed to delete highlight');
+        }
+      } catch (err) {
+        console.error('Delete highlight err:', err);
+        alert('Failed to delete highlight');
       } finally {
         setDeletingId(null);
         setShowDeleteModal(false);
@@ -294,26 +311,12 @@ export default function Announcements() {
   };
 
 
-  const handleDeleteHighlight = async (id) => {
-    if (!window.confirm('Delete this highlight?')) return;
-    setDeletingId(id);
-    try {
-      const res = await fetch('https://vynceianoani.helioho.st/skonnect-api/delete_highlight.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id })
-      });
-      if (res.ok) {
-        setHighlights(prev => prev.filter(h => h.id !== id));
-      } else {
-        console.error('Failed to delete highlight', await res.text());
-      }
-    } catch (err) {
-      console.error('Delete highlight err', err);
-    } finally {
-      setDeletingId(null);
-    }
+  const handleDeleteHighlight = (id) => {
+    // open the shared delete confirmation modal for highlights
+    setItemToDelete({ id, type: 'highlight' });
+    setShowDeleteModal(true);
   };
+
 
   // Clean up the preview URL when component unmounts
   useEffect(() => {
@@ -335,6 +338,9 @@ export default function Announcements() {
           <LoadingText>
             {deletingId ? "Deleting..." : postingAnnouncement ? "Posting..." : highlightLoading ? "Saving highlight..." : "Loading data..."}
           </LoadingText>
+          <LoadingSubtext>
+            Please wait while we fetch your data
+          </LoadingSubtext>
         </LoadingOverlay>
       )}
 
