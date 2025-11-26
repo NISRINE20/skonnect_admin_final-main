@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import SidebarNav from '../components/Sidebar';
-import { FaUser, FaMapMarkerAlt, FaPhone, FaGraduationCap, FaBriefcase, FaHeart, FaEye } from 'react-icons/fa';
+import { FaUser, FaMapMarkerAlt, FaPhone, FaGraduationCap, FaBriefcase, FaHeart, FaEye, FaCheck, FaTimes } from 'react-icons/fa';
 
 const Layout = styled.div`
   display: flex;
@@ -638,19 +638,21 @@ const YouthPage = () => {
                               variant="accept"
                               onClick={() => requestAdminAuth('accept', youth.id)}
                               title="Accept youth registration"
-                              disabled={isLoadingKey(`status_${youth.id}`)}
+                              disabled={isLoadingKey(`status_${youth.id}_accept`)}
+                              aria-label="Accept youth registration"
                             >
-                              {isLoadingKey(`status_${youth.id}`) && <ButtonSpinner />}
-                              Accept
+                              {isLoadingKey(`status_${youth.id}_accept`) && <ButtonSpinner />}
+                              <FaCheck size={14} aria-hidden="true" />
                             </ActionButton>
                             <ActionButton 
                               variant="reject"
                               onClick={() => requestAdminAuth('reject', youth.id)}
                               title="Reject youth registration"
-                              disabled={isLoadingKey(`status_${youth.id}`)}
+                              disabled={isLoadingKey(`status_${youth.id}_reject`)}
+                              aria-label="Reject youth registration"
                             >
-                              {isLoadingKey(`status_${youth.id}`) && <ButtonSpinner />}
-                              Reject
+                              {isLoadingKey(`status_${youth.id}_reject`) && <ButtonSpinner />}
+                              <FaTimes size={14} aria-hidden="true" />
                             </ActionButton>
                           </ActionButtonGroup>
                         )}
@@ -659,10 +661,11 @@ const YouthPage = () => {
                             variant="accept"
                             onClick={() => requestAdminAuth('accept', youth.id)}
                             title="Move to accepted"
-                            disabled={isLoadingKey(`status_${youth.id}`)}
+                            disabled={isLoadingKey(`status_${youth.id}_accept`)}
+                            aria-label="Move to accepted"
                           >
-                            {isLoadingKey(`status_${youth.id}`) && <ButtonSpinner />}
-                            Move to Accepted
+                            {isLoadingKey(`status_${youth.id}_accept`) && <ButtonSpinner />}
+                            <FaCheck size={14} aria-hidden="true" />
                           </ActionButton>
                         )}
                         {youth.status === 'accepted' && (
@@ -670,10 +673,11 @@ const YouthPage = () => {
                             variant="reject"
                             onClick={() => requestAdminAuth('reject', youth.id)}
                             title="Move to rejected"
-                            disabled={isLoadingKey(`status_${youth.id}`)}
+                            disabled={isLoadingKey(`status_${youth.id}_reject`)}
+                            aria-label="Move to rejected"
                           >
-                            {isLoadingKey(`status_${youth.id}`) && <ButtonSpinner />}
-                            Move to Rejected
+                            {isLoadingKey(`status_${youth.id}_reject`) && <ButtonSpinner />}
+                            <FaTimes size={14} aria-hidden="true" />
                           </ActionButton>
                         )}
                       </ActionButtons>

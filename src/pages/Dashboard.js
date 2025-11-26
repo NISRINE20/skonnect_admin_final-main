@@ -823,6 +823,9 @@ const Dashboard = () => {
   // Get list of unread comments for badge display
   const unreadCommentsData = comments.filter(c => !readCommentIds.has(c.id));
 
+  // badge shows visible unread comments first, fallback to server increment counter
+  const displayBadgeCount = unreadCommentsData.length > 0 ? unreadCommentsData.length : unreadComments;
+  
   return (
     <>
       <GlobalStyle dark={darkMode} />
@@ -931,8 +934,8 @@ const Dashboard = () => {
               style={{ display: 'inline-flex', alignItems: 'center' }}
             >
               <FaBell />
-              {unreadComments > 0 && (
-                <NotificationBadge>{unreadComments > 99 ? '99+' : unreadComments}</NotificationBadge>
+              {displayBadgeCount > 0 && (
+                <NotificationBadge>{displayBadgeCount > 99 ? '99+' : displayBadgeCount}</NotificationBadge>
               )}
             </NotificationButton>
           </div>
