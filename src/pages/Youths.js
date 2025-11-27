@@ -370,7 +370,7 @@ const YouthPage = () => {
 
   const fetchYouths = async () => {
     try {
-      const mainRes = await fetch("https://vynceianoani.helioho.st/skonnect-api/youths.php");
+      const mainRes = await fetch("https://skonnect.atwebpages.com/youths.php");
       if (!mainRes.ok) throw new Error('Main server unreachable');
       const data = await mainRes.json();
       setYouths(data);

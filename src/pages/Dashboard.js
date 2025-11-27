@@ -40,6 +40,8 @@ import {
 } from '../styles/DashboardStyles';
 import Sidebar from '../components/Sidebar';
 import styled, { createGlobalStyle } from 'styled-components';
+// ADDED: fallback fetch helper
+import { fetchWithFallback } from '../utils/fetchWithFallback';
 
 const GlobalStyle = createGlobalStyle`
   body, #root {
@@ -498,7 +500,7 @@ const Dashboard = () => {
     setLoadedDataCount(0);
     
     Promise.all([
-      fetch('https://vynceianoani.helioho.st/skonnect-api/youth_count.php')
+      fetchWithFallback('youth_count.php')
         .then(res => res.json())
         .then(data => {
           setYouthCount(data.count);
@@ -511,7 +513,7 @@ const Dashboard = () => {
           setLoadedDataCount(prev => prev + 1);
         }),
       
-      fetch('https://vynceianoani.helioho.st/skonnect-api/main_event_count.php')
+      fetchWithFallback('main_event_count.php')
         .then(res => res.json())
         .then(data => {
           setEventCount(data.count);
@@ -524,7 +526,7 @@ const Dashboard = () => {
           setLoadedDataCount(prev => prev + 1);
         }),
       
-      fetch('https://vynceianoani.helioho.st/skonnect-api/ai_usage.php')
+      fetchWithFallback('ai_usage.php')
         .then(res => res.json())
         .then(data => {
           setAiUsage(data.total);
@@ -537,7 +539,7 @@ const Dashboard = () => {
           setLoadedDataCount(prev => prev + 1);
         }),
       
-      fetch('https://vynceianoani.helioho.st/skonnect-api/total_engagements.php')
+      fetchWithFallback('total_engagements.php')
         .then(res => res.json())
         .then(data => {
           setEngagementCount(data.total || 0);
@@ -550,7 +552,7 @@ const Dashboard = () => {
           setLoadedDataCount(prev => prev + 1);
         }),
       
-      fetch('https://vynceianoani.helioho.st/skonnect-api/fetch_main_events.php')
+      fetchWithFallback('fetch_main_events.php')
         .then(async res => {
           const text = await res.text();
           try {
@@ -583,7 +585,8 @@ const Dashboard = () => {
 
     async function fetchCommentsCount() {
       try {
-        const res = await fetch('https://vynceianoani.helioho.st/skonnect-api/get_feedback.php', { cache: 'no-store' });
+        // Replace polling fetch for comments
+        const res = await fetchWithFallback('get_feedback.php', { cache: 'no-store' });
         if (!res.ok) throw new Error('Comments fetch failed');
         const data = await res.json();
 
@@ -691,7 +694,7 @@ const Dashboard = () => {
     try {
       const key = `participants_${subEvent.id}`;
       startLoading(key);
-      const response = await fetch(`https://vynceianoani.helioho.st/skonnect-api/fetch_event_responses.php?sub_event_id=${subEvent.id}`);
+      const response = await fetchWithFallback(`fetch_event_responses.php?sub_event_id=${subEvent.id}`);
       const data = await response.json();
       setSelectedEventParticipants(data.participants || []);
       setSelectedEventTitle(subEvent.title);
@@ -710,8 +713,7 @@ const Dashboard = () => {
 
       const key = `attendance_${id}`;
       startLoading(key);
-      // Use the new API (supports subevent_id / sub_event_id)
-      const res = await fetch(`https://vynceianoani.helioho.st/skonnect-api/fetch_attendance.php?subevent_id=${id}`);
+      const res = await fetchWithFallback(`fetch_attendance.php?subevent_id=${id}`);
       const data = await res.json();
 
       if (!data || !data.success) {
@@ -744,7 +746,7 @@ const Dashboard = () => {
     try {
       const key = `done_${eventItem.id}`;
       startLoading(key);
-      const res = await fetch('https://vynceianoani.helioho.st/skonnect-api/update_main_event_status.php', {
+      const res = await fetchWithFallback('update_main_event_status.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ event_id: eventItem.id, status: 'done' })
@@ -767,7 +769,7 @@ const Dashboard = () => {
     try {
       const key = `view_${event.id}`;
       startLoading(key);
-      const response = await fetch(`https://vynceianoani.helioho.st/skonnect-api/get_sub_events.php?event_id=${event.id}`);
+      const response = await fetchWithFallback(`get_sub_events.php?event_id=${event.id}`);
       const data = await response.json();
       setSelectedEventSubEvents(data.subevents || []);
       setSelectedSubEventsTitle(event.title);
@@ -823,9 +825,6 @@ const Dashboard = () => {
   // Get list of unread comments for badge display
   const unreadCommentsData = comments.filter(c => !readCommentIds.has(c.id));
 
-  // badge shows visible unread comments first, fallback to server increment counter
-  const displayBadgeCount = unreadCommentsData.length > 0 ? unreadCommentsData.length : unreadComments;
-  
   return (
     <>
       <GlobalStyle dark={darkMode} />
@@ -848,7 +847,7 @@ const Dashboard = () => {
               {/* Modal header with title (close button removed) */}
               <NotificationHeader>
                 <NotificationTitle>
-                  💬 Notification
+                  💬 Comments
                 </NotificationTitle>
               </NotificationHeader>
 
@@ -919,26 +918,25 @@ const Dashboard = () => {
         <Sidebar darkMode={darkMode} />
         <Main>
 
-        <Topbar style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <DashboardTitle style={{ margin: 0 }}>
-            <h2 style={{ margin: 0 }}>Dashboard</h2>
-            <p style={{ margin: 0 }}>Hi, Admin. Welcome back to SKonnect Admin!</p>
+        <Topbar>
+          <DashboardTitle>
+            <h2>Dashboard</h2>
+            <p>Hi, Admin. Welcome back to SKonnect Admin!</p>
           </DashboardTitle>
-          
-          {/* Notification Bell aligned to the right of the title */}
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <NotificationButton
-              aria-label="Comments notifications"
-              onClick={handleToggleNotificationModal}
-              title={unreadComments > 0 ? `${unreadComments} new comment(s)` : 'No new comments'}
-              style={{ display: 'inline-flex', alignItems: 'center' }}
-            >
-              <FaBell />
-              {displayBadgeCount > 0 && (
-                <NotificationBadge>{displayBadgeCount > 99 ? '99+' : displayBadgeCount}</NotificationBadge>
-              )}
-            </NotificationButton>
-          </div>
+
+          {/* ---------- IMPROVED: Notification Bell Button (top-right corner) ---------- */}
+        <NotificationButton
+                 aria-label="Comments notifications"
+                 onClick={handleToggleNotificationModal}
+                 style={{ position: 'relative' }}
+                 title={unreadComments > 0 ? `${unreadComments} new comment(s)` : 'No new comments'}
+               >
+                 <FaBell />
+                 {unreadComments > 0 && (
+                   <NotificationBadge>{unreadComments > 99 ? '99+' : unreadComments}</NotificationBadge>
+                 )}
+        </NotificationButton>
+
         </Topbar>
         
           <Grid>
