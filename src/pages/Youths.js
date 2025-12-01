@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import SidebarNav from '../components/Sidebar';
 import { FaUser, FaMapMarkerAlt, FaPhone, FaGraduationCap, FaBriefcase, FaHeart, FaEye, FaCheck, FaTimes } from 'react-icons/fa';
+import { fetchWithFallback } from '../utils/fetchWithFallback';
+
 
 const Layout = styled.div`
   display: flex;
@@ -391,75 +393,6 @@ const YouthPage = () => {
     fetchYouths();
   }, []);
 
-  const handleStatusChange = async (youthId, newStatus) => {
-    const key = `status_${youthId}`;
-    startLoading(key);
-    try {
-      // If accepting, send the acceptance email first. Only update status when email send succeeds.
-      if (newStatus === 'accepted') {
-        const acceptedYouth = youths.find(y => y.id === youthId);
-
-        if (!acceptedYouth || !acceptedYouth.email) {
-          window.alert('Cannot accept: no email address available for this youth.');
-          stopLoading(key);
-          return;
-        }
-
-        try {
-          // Note: using existing endpoint configured in this file. Make sure URL is correct (it looked like it might be missing a slash).
-          const emailResp = await fetch(`https://vynceianoani.helioho.st/skonnect/send_acceptance.php`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: youthId, email: acceptedYouth.email, full_name: acceptedYouth.full_name })
-          });
-
-          // If request failed at network level
-          if (!emailResp.ok) {
-            console.error('Email endpoint returned non-OK status', emailResp.status);
-            window.alert('Failed to send acceptance email. Status not changed.');
-            stopLoading(key);
-            return;
-          }
-
-          // Try parse JSON response; if it has success:false treat as failure
-          let emailJson = null;
-          try { emailJson = await emailResp.json(); } catch (e) { /* ignore parse errors */ }
-          if (emailJson && emailJson.success === false) {
-            console.error('Email endpoint reported failure:', emailJson);
-            window.alert('Failed to send acceptance email. Status not changed.');
-            stopLoading(key);
-            return;
-          }
-        } catch (emailErr) {
-          console.error('Error sending acceptance email:', emailErr);
-          window.alert('Error sending acceptance email. Status not changed.');
-          stopLoading(key);
-          return;
-        }
-      }
-
-      // Proceed to update status on server
-      const response = await fetch(`https://vynceianoani.helioho.st/skonnect-api/update_youth_status.php`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: youthId, status: newStatus })
-      });
-
-      if (response.ok) {
-        // Update local state only after server accepted the change
-        setYouths(youths.map(youth => (youth.id === youthId ? { ...youth, status: newStatus } : youth)));
-      } else {
-        console.error('Failed to update status on server:', response.status);
-        window.alert('Failed to update status on server.');
-      }
-    } catch (error) {
-      console.error('Error updating status:', error);
-      window.alert('An error occurred while changing status.');
-    } finally {
-      stopLoading(key);
-    }
-  };
-
   const filteredYouths = youths.filter(youth => {
     const matchesSearch = Object.values(youth)
       .join(' ')
@@ -487,6 +420,21 @@ const YouthPage = () => {
     setAuthPassword("");
     setAuthError(null);
     setAuthOpen(true);
+
+    // start the button loading spinner immediately for the clicked control
+    const id = typeof target === 'object' ? target?.id : target;
+    if (!id) return;
+    if (action === 'view') startLoading(`view_${id}`);
+    if (action === 'accept') startLoading(`status_${id}_accept`);
+    if (action === 'reject') startLoading(`status_${id}_reject`);
+  };
+
+  const stopAuthButtonLoading = () => {
+    const id = typeof authTarget === 'object' ? authTarget?.id : authTarget;
+    if (!id) return;
+    if (authAction === 'view') stopLoading(`view_${id}`);
+    if (authAction === 'accept') stopLoading(`status_${id}_accept`);
+    if (authAction === 'reject') stopLoading(`status_${id}_reject`);
   };
 
   const verifyAdminPassword = async (password) => {
@@ -519,6 +467,8 @@ const YouthPage = () => {
     const ok = await verifyAdminPassword(authPassword);
     if (!ok) {
       setAuthError("Invalid admin password");
+      // stop the button spinner so it doesn't stay stuck on bad password
+      stopAuthButtonLoading();
       return;
     }
 
@@ -527,6 +477,8 @@ const YouthPage = () => {
       if (authAction === "view") {
         // show youth details (authTarget is the youth object)
         setSelectedYouth(authTarget);
+        // stop the view button loading now that view succeeded
+        stopAuthButtonLoading();
         setAuthOpen(false);
         return;
       }
@@ -535,19 +487,95 @@ const YouthPage = () => {
         // authTarget is the youth id for status changes
         const newStatus = authAction === "accept" ? "accepted" : "rejected";
         await handleStatusChange(authTarget, newStatus);
+        // handleStatusChange will stop its own loading key
         setAuthOpen(false);
         return;
       }
     } catch (err) {
       console.error("Auth action error", err);
       setAuthError("An error occurred while performing the action");
+      stopAuthButtonLoading();
     }
   };
 
-  // helper: invoked from UI instead of direct actions
-  // Example usage in JSX:
-  // onClick={() => requestAdminAuth('view', youth)}
-  // onClick={() => requestAdminAuth('accept', youth.id)}
+  const handleStatusChange = async (youthId, newStatus) => {
+    const actionSuffix = newStatus === 'accepted' ? 'accept' : 'reject';
+    const key = `status_${youthId}_${actionSuffix}`;
+    startLoading(key);
+    try {
+      // If accepting, send the acceptance email first. Only update status when email send succeeds.
+      if (newStatus === 'accepted') {
+        const acceptedYouth = youths.find(y => y.id === youthId);
+
+        if (!acceptedYouth || !acceptedYouth.email) {
+          window.alert('Cannot accept: no email address available for this youth.');
+          stopLoading(key);
+          return;
+        }
+
+        try {
+          // keep the original PHP endpoint for send_acceptance.php (no fallback)
+          const emailResp = await fetch('https://vynceianoani.helioho.st/skonnect/send_acceptance.php', {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify({ id: youthId, email: acceptedYouth.email, full_name: acceptedYouth.full_name })
+           });
+ 
+           if (!emailResp.ok) {
+             console.error('Email endpoint returned non-OK status', emailResp.status);
+             window.alert('Failed to send acceptance email. Status not changed.');
+             stopLoading(key);
+             return;
+           }
+ 
+           let emailJson = null;
+           try { emailJson = await emailResp.json(); } catch (e) { /* ignore parse errors */ }
+           if (emailJson && emailJson.success === false) {
+             console.error('Email endpoint reported failure:', emailJson);
+             window.alert('Failed to send acceptance email. Status not changed.');
+             stopLoading(key);
+             return;
+           }
+         } catch (emailErr) {
+           console.error('Error sending acceptance email:', emailErr);
+           window.alert('Error sending acceptance email. Status not changed.');
+           stopLoading(key);
+           return;
+         }
+      }
+
+      // Proceed to update status on server via fallback helper
+      const response = await fetchWithFallback('update_youth_status.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: youthId, status: newStatus })
+      });
+
+      if (response.ok) {
+        // Try to parse JSON response (optional)
+        try {
+          const json = await response.json();
+          if (json && json.success === false) {
+            console.error('Server reported failure updating status', json);
+            window.alert('Failed to update status on server.');
+          } else {
+            setYouths(prev => prev.map(y => (y.id === youthId ? { ...y, status: newStatus } : y)));
+          }
+        } catch {
+          // If not JSON, optimistically update local state
+          setYouths(prev => prev.map(y => (y.id === youthId ? { ...y, status: newStatus } : y)));
+        }
+      } else {
+        console.error('Failed to update status on server:', response.status);
+        window.alert('Failed to update status on server.');
+      }
+    } catch (error) {
+      console.error('Error updating status:', error);
+      window.alert('An error occurred while changing status.');
+    } finally {
+      stopLoading(key);
+    }
+  };
 
   return (
     <Layout dark={darkMode}>
@@ -629,7 +657,12 @@ const YouthPage = () => {
                     </td>
                     <td>
                       <ActionButtons>
-                        <ViewButton onClick={() => requestAdminAuth('view', youth)}>
+                        <ViewButton
+                          onClick={() => requestAdminAuth('view', youth)}
+                          disabled={isLoadingKey(`view_${youth.id}`)}
+                          aria-disabled={isLoadingKey(`view_${youth.id}`)}
+                        >
+                          {isLoadingKey(`view_${youth.id}`) && <ButtonSpinner />}
                           <FaEye /> View
                         </ViewButton>
                         {youth.status === 'pending' && (
@@ -789,7 +822,7 @@ const YouthPage = () => {
         )}
 
         {authOpen && (
-          <AuthModalOverlay onClick={() => setAuthOpen(false)}>
+          <AuthModalOverlay onClick={() => { stopAuthButtonLoading(); setAuthOpen(false); }}>
             <AuthModalBox onClick={e => e.stopPropagation()}>
               <h3 style={{ margin: 0, marginBottom: 8 }}>
                 {authAction === "view" ? "Admin Password Required" : "Confirm Accept Account"}
@@ -806,7 +839,7 @@ const YouthPage = () => {
               />
               {authError && <div style={{ color: "#b91c1c", marginBottom: 8 }}>{authError}</div>}
               <AuthActions>
-                <button onClick={() => setAuthOpen(false)} style={{ padding: "0.5rem 0.75rem", borderRadius: 6 }}>Cancel</button>
+                <button onClick={() => { stopAuthButtonLoading(); setAuthOpen(false); }} style={{ padding: "0.5rem 0.75rem", borderRadius: 6 }}>Cancel</button>
                 <button
                   onClick={handleAuthConfirm}
                   disabled={authLoading || !authPassword}

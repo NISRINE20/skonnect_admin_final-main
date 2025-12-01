@@ -27,9 +27,10 @@ import {
   HighlightsScroll,
 } from "./../styles/AnnounceStyle";
 import styled from "styled-components";
-
-import SidebarNav from "../components/Sidebar";
-import { FaBullhorn, FaStar, FaTrash, FaImage, FaEdit } from "react-icons/fa";
+import { fetchWithFallback } from '../utils/fetchWithFallback';
+ 
+ import SidebarNav from "../components/Sidebar";
+ import { FaBullhorn, FaStar, FaTrash, FaImage, FaEdit } from "react-icons/fa";
 
 /* --- Revised loading overlay styles to match Dashboard --- */
 const LoadingOverlay = styled.div`
@@ -56,6 +57,20 @@ const Spinner = styled.div`
   @keyframes spin {
     to { transform: rotate(360deg); }
   }
+`;
+
+/* small inline button spinner */
+const ButtonSpinner = styled.span`
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  animation: spin 0.8s linear infinite;
+  vertical-align: middle;
+  margin-right: 8px;
+  @keyframes spin { to { transform: rotate(360deg); } }
 `;
 
 const LoadingText = styled.div`
@@ -101,13 +116,13 @@ export default function Announcements() {
   const fetchAnnouncements = async () => {
     setLoadingAnnouncements(true);
     try {
-      const response = await fetch(
-        "https://vynceianoani.helioho.st/skonnect-api/announcements.php"
-      );
-      const data = await response.json();
-      setAnnouncements(data);
+      const res = await fetchWithFallback('announcements.php');
+      if (!res || !res.ok) throw new Error('Announcements server unreachable');
+      const data = await res.json();
+      setAnnouncements(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Failed to fetch announcements:", error);
+      setAnnouncements([]);
     } finally {
       setLoadingAnnouncements(false);
     }
@@ -118,26 +133,26 @@ export default function Announcements() {
     if (!title || !message) return;
 
     try {
-      const response = await fetch(
-        "https://vynceianoani.helioho.st/skonnect-api/announcements.php",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title, message, type: category }),
-        }
-      );
-
-      const data = await response.json();
+      setPostingAnnouncement(true);
+      const res = await fetchWithFallback('announcements.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, message, type: category })
+      });
+      if (!res || !res.ok) throw new Error('Post failed');
+      const data = await res.json();
       if (data.success) {
-        fetchAnnouncements();
-        setTitle("");
-        setCategory("General");
-        setMessage("");
+        await fetchAnnouncements();
+        setTitle('');
+        setCategory('General');
+        setMessage('');
       } else {
-        console.error("Failed to post announcement:", data.error);
+        console.error('Failed to post announcement:', data.error);
       }
     } catch (error) {
       console.error("Error posting announcement:", error);
+    } finally {
+      setPostingAnnouncement(false);
     }
   };
 
@@ -148,13 +163,13 @@ export default function Announcements() {
   const fetchHighlights = async () => {
     setLoadingHighlights(true);
     try {
-      const response = await fetch(
-        "https://vynceianoani.helioho.st/skonnect-api/highlights.php"
-      );
-      const data = await response.json();
-      setHighlights(data);
+      const res = await fetchWithFallback('highlights.php');
+      if (!res || !res.ok) throw new Error('Highlights server unreachable');
+      const data = await res.json();
+      setHighlights(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Failed to fetch highlights:", error);
+      setHighlights([]);
     } finally {
       setLoadingHighlights(false);
     }
@@ -171,32 +186,27 @@ export default function Announcements() {
 
     setHighlightLoading(true);
     try {
-      const endpoint = editingHighlight
-        ? 'https://vynceianoani.helioho.st/skonnect-api/edit_highlight.php'
-        : 'https://vynceianoani.helioho.st/skonnect-api/highlights.php';
+      const endpoint = editingHighlight ? 'edit_highlight.php' : 'highlights.php';
       const method = editingHighlight ? 'PUT' : 'POST';
-
-      // Match the API's expected payload structure
       const body = {
         title: highlightTitle,
         description: highlightDesc,
-        articleText: highlightText, // Changed from article_text to articleText
+        articleText: highlightText,
         image: highlightImage,
         ...(editingHighlight && { id: editingHighlight.id })
       };
 
-      const response = await fetch(endpoint, {
+      const res = await fetchWithFallback(endpoint, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       });
-
-      const result = await response.json();
-
+      if (!res || !res.ok) throw new Error('Highlight post failed');
+      const result = await res.json();
       if (result.success) {
-        // Fetch fresh data after successful post
-        const data = await fetch('https://vynceianoani.helioho.st/skonnect-api/highlights.php').then(r => r.json());
-        setHighlights(data);
+        const freshRes = await fetchWithFallback('highlights.php');
+        const fresh = freshRes && freshRes.ok ? await freshRes.json() : [];
+        setHighlights(Array.isArray(fresh) ? fresh : []);
         resetHighlightForm();
       } else {
         alert(result.error || 'Failed to save highlight');
@@ -264,14 +274,13 @@ export default function Announcements() {
     setDeletingId(itemToDelete.id);
     if (itemToDelete.type === "announcement") {
       try {
-        const res = await fetch('https://vynceianoani.helioho.st/skonnect-api/delete_announcement.php', {
+        const res = await fetchWithFallback('delete_announcement.php', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: itemToDelete.id }),
+          body: JSON.stringify({ id: itemToDelete.id })
         });
-
+        if (!res || !res.ok) throw new Error('Delete failed');
         const result = await res.json();
-
         if (result.success) {
           setAnnouncements(prev => prev.filter(a => a.id !== itemToDelete.id));
         } else {
@@ -288,11 +297,12 @@ export default function Announcements() {
     } else if (itemToDelete.type === "highlight") {
       // use same modal confirmation flow for highlights
       try {
-        const res = await fetch('https://vynceianoani.helioho.st/skonnect-api/delete_highlight.php', {
+        const res = await fetchWithFallback('delete_highlight.php', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id: itemToDelete.id })
         });
+        if (!res || !res.ok) throw new Error('Delete highlight failed');
         const result = await res.json();
         if (result.success) {
           setHighlights(prev => prev.filter(h => h.id !== itemToDelete.id));
@@ -396,7 +406,10 @@ export default function Announcements() {
             value={message}
             onChange={(e) => setMessage(e.target.value)}
           />
-          <Button type="submit" disabled={postingAnnouncement}>{postingAnnouncement ? 'Posting...' : 'Post'}</Button>
+          <Button type="submit" disabled={postingAnnouncement}>
+            {postingAnnouncement && <ButtonSpinner />}
+            {postingAnnouncement ? 'Posting...' : 'Post'}
+          </Button>
         </Form>
 
         {announcements.length === 0 ? (
@@ -517,6 +530,7 @@ export default function Announcements() {
               onChange={(e) => setHighlightText(e.target.value)}
             />
             <Button type="submit" disabled={highlightLoading}>
+              {highlightLoading && <ButtonSpinner />}
               {editingHighlight ? 'Update' : 'Add'} Highlight
             </Button>
           </Form>
@@ -557,6 +571,7 @@ export default function Announcements() {
             <p>Are you sure you want to delete this item?</p>
             <ModalActions>
               <Button variant="delete" onClick={confirmDelete} disabled={!!deletingId}>
+                {deletingId && <ButtonSpinner />}
                 <FaTrash style={{ marginRight: "6px" }} />
                 {deletingId ? 'Deleting...' : 'Delete'}
               </Button>

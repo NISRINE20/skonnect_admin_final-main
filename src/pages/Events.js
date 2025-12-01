@@ -17,6 +17,7 @@ import {
   FieldGroup,
 } from '../styles/EventsStyles';
 import styled from 'styled-components';
+import { fetchWithFallback } from '../utils/fetchWithFallback';
 
 /* ---------------- Message Modal ---------------- */
 const MessageModalOverlay = styled.div`
@@ -110,20 +111,21 @@ const LoadingSubtext = styled.div`
   font-size: 0.95rem;
 `;
 
+/* small inline button spinner (reuse across pages) */
+const ButtonSpinner = styled.span`
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  animation: spin 0.8s linear infinite;
+  vertical-align: middle;
+  margin-right: 8px;
+  @keyframes spin { to { transform: rotate(360deg); } }
+`;
+ 
 /* ---------------- API Helper ---------------- */
-const fetchWithFallback = async (urlPath, options = {}) => {
-  const host = 'https://vynceianoani.helioho.st/skonnect-api';
-  const doFetch = async (hostUrl) => {
-    const url = `${hostUrl}/${urlPath}`;
-    const res = await fetch(url, options);
-    const text = await res.text();
-    let json;
-    try { json = JSON.parse(text); } catch { throw new Error('Invalid JSON response: ' + text); }
-    if (!res.ok) throw new Error(json.message || text);
-    return json;
-  };
-  return await doFetch(host);
-};
 
 /* ---------------- Component ---------------- */
 const Events = () => {
@@ -157,38 +159,38 @@ const Events = () => {
   const [subFieldInput, setSubFieldInput] = useState({ label: '', type: 'text', required: true });
 
   useEffect(() => { fetchEvents(); }, []);
+ 
+  const fetchEvents = async () => {
+    setLoadingEvents(true);
+    try {
+      const res = await fetchWithFallback('get_main_events.php');
+      if (!res || !res.ok) throw new Error('Events server unreachable');
+      const data = await res.json();
+      console.log('✅ Fetched main events:', data);
 
-const fetchEvents = async () => {
-  setLoadingEvents(true);
-  try {
-    const data = await fetchWithFallback('get_main_events.php');
-    console.log('✅ Fetched main events:', data);
+      // Normalize response to an array to avoid "events.map is not a function"
+      let list = [];
+      if (Array.isArray(data)) {
+        list = data;
+      } else if (Array.isArray(data.main_events)) {
+        list = data.main_events;
+      } else if (Array.isArray(data.events)) {
+        list = data.events;
+      } else if (Array.isArray(data.data)) {
+        list = data.data;
+      } else {
+        console.warn('fetchEvents: unexpected payload shape, defaulting to []');
+        list = [];
+      }
 
-    // Normalize response to an array to avoid "events.map is not a function"
-    let list = [];
-    if (Array.isArray(data)) {
-      list = data;
-    } else if (Array.isArray(data.main_events)) {
-      list = data.main_events;
-    } else if (Array.isArray(data.events)) {
-      list = data.events;
-    } else if (Array.isArray(data.data)) {
-      list = data.data;
-    } else {
-      // if unknown shape, keep empty and log for debugging
-      console.warn('fetchEvents: unexpected payload shape, defaulting to []');
-      list = [];
+      setEvents(list);
+    } catch (err) {
+      console.error('❌ Failed to fetch events', err);
+      setEvents([]);
+    } finally {
+      setLoadingEvents(false);
     }
-
-    setEvents(list);
-  } catch (err) {
-    console.error('❌ Failed to fetch events', err);
-    setEvents([]);
-  } finally {
-    setLoadingEvents(false);
-  }
-};
-
+  };
 
   /* ---------------- MAIN EVENT ---------------- */
   const handleCreateMainEvent = async (e) => {
@@ -197,12 +199,13 @@ const fetchEvents = async () => {
 
     setCreatingMainEvent(true);
     try {
-      const result = await fetchWithFallback('create_main_event.php', {
+      const res = await fetchWithFallback('create_main_event.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(mainForm)
       });
-
+      if (!res || !res.ok) throw new Error('Create main event failed');
+      const result = await res.json();
       if (result.success && result.event_id) {
         setSelectedEventId(result.event_id);
         setMainForm({ title: '', description: '' });
@@ -257,7 +260,7 @@ const fetchEvents = async () => {
       setMessage({ type: 'error', text: 'Please create or select a main event first.' });
       return;
     } 
-
+   
     setSavingSubEventsLoading(true);
     try {
       const subForm = new FormData();
@@ -288,17 +291,20 @@ const fetchEvents = async () => {
         if (sub.image instanceof File) subForm.append(`image_${idx}`, sub.image);
       });
 
-      const subResult = await fetchWithFallback('create_sub_event.php', { method: 'POST', body: subForm });
+      const subRes = await fetchWithFallback('create_sub_event.php', { method: 'POST', body: subForm });
+      if (!subRes || !subRes.ok) throw new Error('Sub-event save failed');
+      const subResult = await subRes.json();
       console.log('[SubEvent Save Result]', subResult);
 
-      if (subResult.success) {
+      if (subResult && subResult.success) {
         // Custom fields
-        if (subResult.subevent_ids?.length > 0) {
+        if (Array.isArray(subResult.subevent_ids) && subResult.subevent_ids.length > 0) {
           for (let i = 0; i < finalSubEvents.length; i++) {
             const subEvent = finalSubEvents[i];
             const subeventId = subResult.subevent_ids[i];
             for (const field of subEvent.customFields) {
-              await fetchWithFallback('insert_subevent_field.php', {
+              // fire-and-forget acceptable here, but check response optionally
+              const fieldRes = await fetchWithFallback('insert_subevent_field.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -309,6 +315,9 @@ const fetchEvents = async () => {
                   field_order: field.field_order
                 })
               });
+              if (fieldRes && !fieldRes.ok) {
+                console.warn('Failed inserting custom field for subevent', subeventId);
+              }
             }
           }
         }
@@ -380,6 +389,7 @@ const fetchEvents = async () => {
                 onChange={e => setMainForm({ ...mainForm, description: e.target.value })} required />
             </InputGroup>
             <Button type="submit" disabled={creatingMainEvent}>
+              {creatingMainEvent && <ButtonSpinner />}
               {creatingMainEvent ? 'Saving...' : '💾 Save Main Event'}
             </Button>
           </Form>
@@ -507,6 +517,7 @@ const fetchEvents = async () => {
           )}
 
           <Button type="button" onClick={handleSaveSubEvents} disabled={savingSubEventsLoading}>
+            {savingSubEventsLoading && <ButtonSpinner />}
             {savingSubEventsLoading ? 'Saving...' : '💾 Save Sub-events'}
           </Button>
         </FormPanel>

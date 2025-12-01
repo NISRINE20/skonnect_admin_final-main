@@ -8,6 +8,7 @@ import {
   FaSearch,
 } from "react-icons/fa";
 import SidebarNav from "../components/Sidebar";
+import { fetchWithFallback } from '../utils/fetchWithFallback';
 import {
   Layout,
   ContentWrapper,
@@ -97,8 +98,8 @@ const Comments = () => {
     let mounted = true;
     async function fetchEvents() {
       try {
-        const res = await fetch("https://vynceianoani.helioho.st/skonnect-api/get_main_events.php");
-        if (!res.ok) throw new Error("Failed to load events");
+        const res = await fetchWithFallback('get_main_events.php');
+        if (!res || !res.ok) throw new Error("Failed to load events");
         const data = await res.json();
         let list = Array.isArray(data) ? data : (Array.isArray(data.main_events) ? data.main_events : (Array.isArray(data.events) ? data.events : (Array.isArray(data.data) ? data.data : [])));
         const map = {};
@@ -145,8 +146,8 @@ const Comments = () => {
 
     // Fetch feedback only. Do NOT fetch names, emails or profile pictures.
     async function fetchFeedback() {
-      const res = await fetch("https://vynceianoani.helioho.st/skonnect-api/get_feedback.php", { signal: controller.signal });
-      if (!res.ok) throw new Error("Failed to load feedback");
+      const res = await fetchWithFallback('get_feedback.php', { signal: controller.signal }).catch(() => null);
+      if (!res || !res.ok) throw new Error("Failed to load feedback");
       return await res.json();
     }
 

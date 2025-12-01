@@ -22,6 +22,7 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import listPlugin from "@fullcalendar/list";
 import interactionPlugin from "@fullcalendar/interaction";
 import { format } from 'date-fns';
+import { fetchWithFallback } from '../utils/fetchWithFallback';
 
 // Styled components
 const CalendarEventContent = styled.div`
@@ -128,26 +129,23 @@ const Calendar = () => {
   const [calendarRef, setCalendarRef] = useState(null);
 
   // Fetch events from sub_events
-const fetchEvents = async () => {
-  setLoading(true);
-  try {
-    const res = await fetch("https://vynceianoani.helioho.st/skonnect-api/sub_events_calendar.php");
-    if (!res.ok) throw new Error("Server unreachable");
-
-    const data = await res.json();
-    console.log("Fetched Events from API:", data);
-
-    // Use API data directly since it already has `start`, `allDay`, and `extendedProps`
-    setEvents(data);
-
-  } catch (err) {
-    console.error("Error loading events", err);
-  } finally {
-    setLoading(false);
-  }
-};
-
-
+  const fetchEvents = async () => {
+    setLoading(true);
+    try {
+      // use fetchWithFallback so primary and fallback hosts are attempted
+      const res = await fetchWithFallback('sub_events_calendar.php');
+      if (!res || !res.ok) throw new Error('Server unreachable');
+      const data = await res.json();
+      console.log('Fetched Events from API:', data);
+      // API already returns objects compatible with FullCalendar (start, allDay, extendedProps)
+      setEvents(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Error loading events', err);
+      setEvents([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => { fetchEvents(); }, []);
 

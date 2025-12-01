@@ -22,6 +22,8 @@ import { Line } from 'react-chartjs-2';
 import { Bar } from 'react-chartjs-2';
 import { BarElement } from 'chart.js';
 import logo from '../sklogo.png';
+import {fetchWithFallback} from '../utils/fetchWithFallback';
+
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -72,9 +74,17 @@ function PieChartYouthPerMonth() {
   const [data, setData] = useState([]);
 
   useEffect(() => {
-    fetch('https://vynceianoani.helioho.st/skonnect-api/youth_per_month.php')
-      .then(res => res.json())
-      .then(res => setData(res));
+    (async () => {
+      try {
+        const res = await fetchWithFallback('youth_per_month.php');
+        if (!res || !res.ok) throw new Error('Failed to load youth per month');
+        const json = await res.json();
+        setData(json || []);
+      } catch (err) {
+        console.error('Error loading youth per month:', err);
+        setData([]);
+      }
+    })();
   }, []);
 
   const chartData = {
@@ -128,18 +138,19 @@ function AIUsageChart() {
   const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
-    fetch('https://vynceianoani.helioho.st/skonnect-api/ai_usage.php')
-      .then(res => res.json())
-      .then(res => {
-        // Ensure we have monthly_data array, or use empty array as fallback
-        setData(res.monthly_data || []);
-        setIsLoading(false);
-      })
-      .catch(err => {
+    (async () => {
+      try {
+        const res = await fetchWithFallback('ai_usage.php');
+        if (!res || !res.ok) throw new Error('AI usage fetch failed');
+        const json = await res.json();
+        setData(json.monthly_data || []);
+      } catch (err) {
         console.error('Error fetching AI usage data:', err);
         setData([]);
+      } finally {
         setIsLoading(false);
-      });
+      }
+    })();
   }, []);
 
   // Return loading state or error state if no data
@@ -206,12 +217,12 @@ function EngagementsBarChart() {
 
   useEffect(() => {
     let mounted = true;
-    fetch('https://vynceianoani.helioho.st/skonnect-api/total_engagements.php')
-      .then(res => res.json())
-      .then(json => {
+    (async () => {
+      try {
+        const res = await fetchWithFallback('total_engagements.php');
         if (!mounted) return;
-        // If API returns monthly breakdown use it
-        // Expecting shape: { monthly: [ { month: 1, count: 10 }, ... ] }
+        if (!res || !res.ok) throw new Error('Engagements fetch failed');
+        const json = await res.json();
         if (json.monthly && Array.isArray(json.monthly) && json.monthly.length) {
           const months = json.monthly;
           const labels = months.map(m => monthLabels[(m.month || m.m) - 1] || String(m.month || m.m));
@@ -239,15 +250,17 @@ function EngagementsBarChart() {
         } else {
           setChartData(null);
         }
-        setLoading(false);
-      })
-      .catch(err => {
+      } catch (err) {
         console.error('Error fetching engagements:', err);
         if (mounted) {
           setChartData(null);
+        }
+      } finally {
+        if (mounted) {
           setLoading(false);
         }
-      });
+      }
+    })();
     return () => { mounted = false; };
   }, []);
 
@@ -300,11 +313,12 @@ function EventsPerMonthChart() {
 
   useEffect(() => {
     let mounted = true;
-    fetch('https://vynceianoani.helioho.st/skonnect-api/main_events_per_month.php')
-      .then(res => res.json())
-      .then(json => {
+    (async () => {
+      try {
+        const res = await fetchWithFallback('main_events_per_month.php');
         if (!mounted) return;
-        // expecting { monthly: [ { year: 2025, month: 10, count: 5 }, ... ], total: N }
+        if (!res || !res.ok) throw new Error('Events per month fetch failed');
+        const json = await res.json();
         if (json.monthly && Array.isArray(json.monthly)) {
           const labels = json.monthly.map(m => monthLabels[(m.month || 1) - 1] + ' ' + (m.year || ''));
           const data = json.monthly.map(m => Number(m.count || 0));
@@ -319,15 +333,17 @@ function EventsPerMonthChart() {
         } else {
           setChartData(null);
         }
-        setLoading(false);
-      })
-      .catch(err => {
+      } catch (err) {
         console.error('Error fetching events per month:', err);
         if (mounted) {
           setChartData(null);
+        }
+      } finally {
+        if (mounted) {
           setLoading(false);
         }
-      });
+      }
+    })();
     return () => { mounted = false; };
   }, []);
 
@@ -382,10 +398,12 @@ function SubEventsPerMonthChart() {
 
   useEffect(() => {
     let mounted = true;
-    fetch('https://vynceianoani.helioho.st/skonnect-api/sub_events_per_month.php')
-      .then(res => res.json())
-      .then(json => {
+    (async () => {
+      try {
+        const res = await fetchWithFallback('sub_events_per_month.php');
         if (!mounted) return;
+        if (!res || !res.ok) throw new Error('Sub-events per month fetch failed');
+        const json = await res.json();
         if (json.monthly && Array.isArray(json.monthly)) {
           const labels = json.monthly.map(m => monthLabels[(m.month || 1) - 1] + ' ' + (m.year || ''));
           const data = json.monthly.map(m => Number(m.count || 0));
@@ -400,15 +418,17 @@ function SubEventsPerMonthChart() {
         } else {
           setChartData(null);
         }
-        setLoading(false);
-      })
-      .catch(err => {
+      } catch (err) {
         console.error('Error fetching activities per month:', err);
         if (mounted) {
           setChartData(null);
+        }
+      } finally {
+        if (mounted) {
           setLoading(false);
         }
-      });
+      }
+    })();
     return () => { mounted = false; };
   }, []);
 
@@ -504,23 +524,22 @@ const Analytics = () => {
 
   // Load chat history from XAMPP database (only admin responses)
   useEffect(() => {
-    fetch('https://vynceianoani.helioho.st/skonnect-api/chatbot_messages.php')
-      .then(res => res.json())
-      .then(data => {
+    (async () => {
+      try {
+        const res = await fetchWithFallback('chatbot_messages.php');
+        if (!res || !res.ok) throw new Error('Chat history fetch failed');
+        const data = await res.json();
         setChatMessages(
           data.length
-            ? data.map(msg => ({
-                user: msg.sender === 'user',
-                text: msg.message
-              }))
+            ? data.map(msg => ({ user: msg.sender === 'user', text: msg.message }))
             : [{ user: false, text: "Hi! I'm Skonnect Bot. How can I help you today?" }]
         );
-      })
-      .catch(() => {
+      } catch {
         setChatMessages([
           { user: false, text: "Hi! I'm Skonnect Bot. How can I help you today?" }
         ]);
-      });
+      }
+    })();
   }, []);
 
   // --- Chatbot Logic ---
@@ -535,14 +554,15 @@ const Analytics = () => {
     setLoading(true);
 
     // Save user message to DB
-    fetch('https://vynceianoani.helioho.st/skonnect-api/chatbot_messages.php', {
+    // persist user message to DB (use fallback to internal API)
+    fetchWithFallback('chatbot_messages.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         sender: 'user',
         message: userMsg
       })
-    });
+    }).catch(() => {}); // non-blocking
 
     // Show loading animation for bot response
     setChatMessages(msgs => [...msgs, { user: false, text: "__loading__" }]);
@@ -564,15 +584,15 @@ const Analytics = () => {
         return [...filtered, { user: false, text: botMsg }];
       });
 
-      // Save bot message to DB
-      fetch('https://vynceianoani.helioho.st/skonnect-api/chatbot_messages.php', {
+      // Save bot message to DB (non-blocking)
+      fetchWithFallback('chatbot_messages.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sender: 'bot',
           message: botMsg
         })
-      });
+      }).catch(() => {});
     } catch (err) {
       setChatMessages(msgs => {
         const filtered = msgs.filter((msg, idx) => !(msg.text === "__loading__" && idx === msgs.length - 1));
@@ -581,14 +601,14 @@ const Analytics = () => {
           { user: false, text: "Sorry, I couldn't connect to the chatbot." }
         ];
       });
-      fetch('https://vynceianoani.helioho.st/skonnect-api/chatbot_messages.php', {
+      fetchWithFallback('chatbot_messages.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sender: 'bot',
           message: "Sorry, I couldn't connect to the chatbot."
         })
-      });
+      }).catch(() => {});
     }
     setLoading(false);
   }
@@ -601,87 +621,93 @@ const Analytics = () => {
   }, [chatMessages, chatOpen]);
 
   useEffect(() => {
-    fetch('https://vynceianoani.helioho.st/skonnect-api/youth_count.php')
-      .then(res => res.json())
-      .then(data => {
-        setYouthCount(data.count);
-        setYouthIncrease(data.increase_percent);
-      })
-      .catch(err => {
+    (async () => {
+      try {
+        const res = await fetchWithFallback('youth_count.php');
+        if (!res || !res.ok) throw new Error('youth_count failed');
+        const data = await res.json();
+        setYouthCount(data.count || 0);
+        setYouthIncrease(data.increase_percent || 0);
+      } catch (err) {
         setYouthCount(0);
         setYouthIncrease(0);
-      });
+      }
+    })();
   }, []);
 
   useEffect(() => {
-    fetch('https://vynceianoani.helioho.st/skonnect-api/main_event_count.php')
-      .then(res => res.json())
-      .then(data => {
-        setEventCount(data.count);
-        setEventIncrease(data.increase_percent);
-      })
-      .catch(err => {
+    (async () => {
+      try {
+        const res = await fetchWithFallback('main_event_count.php');
+        if (!res || !res.ok) throw new Error('main_event_count failed');
+        const data = await res.json();
+        setEventCount(data.count || 0);
+        setEventIncrease(data.increase_percent || 0);
+      } catch {
         setEventCount(0);
         setEventIncrease(0);
-      });
+      }
+    })();
   }, []);
 
   // Add this useEffect after your other useEffect hooks to fetch AI usage data
   useEffect(() => {
-    fetch('https://vynceianoani.helioho.st/skonnect-api/ai_usage.php')
-      .then(res => res.json())
-      .then(data => {
-        setAiUsage(data.total);
-        setAiUsageIncrease(data.percent_change);
-      })
-      .catch(err => {
+    (async () => {
+      try {
+        const res = await fetchWithFallback('ai_usage.php');
+        if (!res || !res.ok) throw new Error('ai_usage failed');
+        const data = await res.json();
+        setAiUsage(data.total || 0);
+        setAiUsageIncrease(typeof data.percent_change !== 'undefined' ? data.percent_change : 0);
+      } catch {
         setAiUsage(0);
         setAiUsageIncrease(0);
-      });
+      }
+    })();
   }, []);
 
   // NEW: fetch total engagements
   useEffect(() => {
-    fetch('https://vynceianoani.helioho.st/skonnect-api/total_engagements.php')
-      .then(res => res.json())
-      .then(data => {
+    (async () => {
+      try {
+        const res = await fetchWithFallback('total_engagements.php');
+        if (!res || !res.ok) throw new Error('total_engagements failed');
+        const data = await res.json();
         setEngagementCount(data.total || 0);
         setEngagementIncrease(typeof data.percent_change !== 'undefined' ? data.percent_change : 0);
-      })
-      .catch(err => {
+      } catch {
         setEngagementCount(0);
         setEngagementIncrease(0);
-      });
+      }
+    })();
   }, []);
 
   // Add this useEffect to fetch sub-events stats
   useEffect(() => {
-    fetch('https://vynceianoani.helioho.st/skonnect-api/sub_events_stats.php')
-      .then(res => res.json())
-      .then(data => {
+    (async () => {
+      try {
+        const res = await fetchWithFallback('sub_events_stats.php');
+        if (!res || !res.ok) throw new Error('sub_events_stats failed');
+        const data = await res.json();
         if (!data || !data.success) {
           setSubEventsCount(0);
           setSubEventIncrease(0);
           return;
         }
-        // use total (all-time) for summary and current_month/last_month for percent logic
         setSubEventsCount(data.total ?? 0);
-
-        // prefer explicit increase_percent returned by API
         if (typeof data.increase_percent !== 'undefined' && data.increase_percent !== null) {
           setSubEventIncrease(Number(data.increase_percent));
         } else if ((data.last_month ?? 0) === 0 && (data.current_month ?? 0) > 0) {
-          // fallback if API didn't return percent but current>0 and last==0
           setSubEventIncrease(100);
         } else {
           setSubEventIncrease(0);
         }
-      })
-      .catch(err => {
+      } catch (err) {
         console.error('Error fetching sub-events stats:', err);
         setSubEventsCount(0);
         setSubEventIncrease(0);
-      });
+      }
+    })();
   }, []);
   
   // === Reviews state & data merge (from get_feedback.php + get_pictures.php) ===
@@ -691,36 +717,40 @@ const Analytics = () => {
 
   useEffect(() => {
     let mounted = true;
-    Promise.all([
-      fetch('https://vynceianoani.helioho.st/skonnect-api/get_feedback.php').then(r => r.json()).catch(() => []),
-      fetch('https://vynceianoani.helioho.st/skonnect-api/get_pictures.php').then(r => r.json()).catch(() => [])
-    ]).then(([fb, pics]) => {
-      if (!mounted) return;
-      // build avatar map by email (lowercase) - keep but do NOT expose names/emails in UI
-      const map = {};
-      (Array.isArray(pics) ? pics : []).forEach(p => {
-        if (p.email) map[String(p.email).toLowerCase()] = p.image || null;
-      });
-      setAvatarsByEmail(map);
+    (async () => {
+      try {
+        const [fbRes, picsRes] = await Promise.all([
+          fetchWithFallback('get_feedback.php').catch(() => null),
+          fetchWithFallback('get_pictures.php').catch(() => null)
+        ]);
+        if (!mounted) return;
+        const fb = fbRes && fbRes.ok ? await fbRes.json().catch(() => []) : [];
+        const pics = picsRes && picsRes.ok ? await picsRes.json().catch(() => []) : [];
 
-      // Normalize feedback but anonymize name/email/avatar for privacy
-      const normalized = (Array.isArray(fb) ? fb : []).map(r => ({
-        id: r.id,
-        name: 'Anonymous User',                // forced anonymous name
-        email: '',                              // strip email
-        message: r.message || '',
-        created_at: r.created_at || '',
-        avatar: {logo}                       // generic avatar only
-      }));
+        const map = {};
+        (Array.isArray(pics) ? pics : []).forEach(p => {
+          if (p.email) map[String(p.email).toLowerCase()] = p.image || null;
+        });
+        setAvatarsByEmail(map);
 
-      setReviews(normalized);
-      setReviewsLoading(false);
-    }).catch(() => {
-      if (mounted) {
-        setReviews([]);
+        const normalized = (Array.isArray(fb) ? fb : []).map(r => ({
+          id: r.id,
+          name: 'Anonymous User',
+          email: '',
+          message: r.message || '',
+          created_at: r.created_at || '',
+          avatar: { logo }
+        }));
+
+        setReviews(normalized);
         setReviewsLoading(false);
+      } catch (err) {
+        if (mounted) {
+          setReviews([]);
+          setReviewsLoading(false);
+        }
       }
-    });
+    })();
     return () => { mounted = false; };
   }, []);
 
@@ -1035,30 +1065,31 @@ const insights = generateInsights({
             <DashboardTitle>
               <h2>📊 Analytics Overview</h2>
             </DashboardTitle>
-            <button
-              onClick={generateMonthlyReport}
-              disabled={isGenerating}
-              aria-busy={isGenerating}
-              title={isGenerating ? 'Generating report...' : 'Generate monthly report'}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.75rem 1rem',
-                background: isGenerating ? '#9ca3af' : '#2563eb',
-                color: 'white',
-                border: 'none',
-                borderRadius: '0.5rem',
-                cursor: isGenerating ? 'not-allowed' : 'pointer',
-                fontSize: '0.875rem',
-                fontWeight: '500'
-              }}
-            >
-              {isGenerating ? <FaSpinner className="spin" /> : <FaDownload />}
-              {isGenerating ? 'Generating...' : 'Generate Monthly Report'}
-              {isGenerating ? <ButtonSpinner /> : <FaDownload />}
-              {isGenerating ? 'Generating...' : 'Generate Monthly Report'}
-            </button>
+          <button
+  onClick={generateMonthlyReport}
+  disabled={isGenerating}
+  aria-busy={isGenerating}
+  title={isGenerating ? "Generating report..." : "Generate monthly report"}
+  style={{
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "0.5rem",
+    padding: "0.75rem 1.5rem",
+    background: isGenerating ? "#9ca3af" : "#2563eb",
+    color: "white",
+    border: "none",
+    borderRadius: "0.5rem",
+    cursor: isGenerating ? "not-allowed" : "pointer",
+    fontSize: "0.875rem",
+    fontWeight: 500,
+    width: "fit-content"
+  }}
+>
+  {isGenerating ? <ButtonSpinner /> : <FaDownload />}
+  {isGenerating ? "Generating..." : "Generate Monthly Report"}
+</button>
+
           </div>
 
           {/* Placeholder Sections */}
