@@ -372,13 +372,13 @@ const YouthPage = () => {
 
   const fetchYouths = async () => {
     try {
-      const mainRes = await fetch("https://skonnect.atwebpages.com/youths.php");
+      const mainRes = await fetch("https://vynceianoani.helioho.st/skonnect-api/youths.php");
       if (!mainRes.ok) throw new Error('Main server unreachable');
       const data = await mainRes.json();
       setYouths(data);
     } catch (err) {
       try {
-        const fallbackRes = await fetch("https://vynceianoani.helioho.st/skonnect-api/youths.php");
+        const fallbackRes = await fetch("https://skonnect.atwebpages.com/youths.php");
         const data = await fallbackRes.json();
         setYouths(data);
       } catch (fallbackErr) {
