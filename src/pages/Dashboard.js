@@ -413,6 +413,98 @@ const LoadingSubtext = styled.div`
 `;
 
 
+const LeaderboardContainer = styled.div`
+  margin-top: 2rem;
+  background: white;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+`;
+
+const LeaderboardTitle = styled.h3`
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const LeaderboardTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+`;
+
+const LeaderboardThead = styled.thead`
+  background: #f3f4f6;
+  
+  th {
+    padding: 0.75rem;
+    font-size: 0.875rem;
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+    border-bottom: 2px solid #e5e7eb;
+  }
+`;
+
+const LeaderboardTbody = styled.tbody`
+  tr {
+    border-bottom: 1px solid #e5e7eb;
+    transition: background 0.2s;
+    
+    &:hover {
+      background: #f9fafb;
+    }
+    
+    &:nth-child(1) {
+      background: rgba(251, 191, 36, 0.05);
+    }
+    
+    &:nth-child(2) {
+      background: rgba(192, 192, 192, 0.05);
+    }
+    
+    &:nth-child(3) {
+      background: rgba(205, 127, 50, 0.05);
+    }
+  }
+  
+  td {
+    padding: 0.75rem;
+    font-size: 0.875rem;
+    color: #374151;
+  }
+`;
+
+const RankBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-weight: 700;
+  color: white;
+  background: ${props => {
+    if (props.rank === 1) return '#fbbf24';
+    if (props.rank === 2) return '#d1d5db';
+    if (props.rank === 3) return '#d97706';
+    return '#3b82f6';
+  }};
+`;
+
+const PointsBadge = styled.span`
+  display: inline-block;
+  background: #dbeafe;
+  color: #1e40af;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 0.875rem;
+`;
+
 const Dashboard = () => {
   const [youthCount, setYouthCount] = useState(0);
   const [youthIncrease, setYouthIncrease] = useState(0);
@@ -442,10 +534,16 @@ const Dashboard = () => {
   const [selectedDescriptionTitle, setSelectedDescriptionTitle] = useState(''); /* ---------- NEW: Notification modal states ---------- */
   const [notificationModal, setNotificationModal] = useState(false);      // Toggle notification modal visibility
   const [comments, setComments] = useState([]);                            // Array of all comments from API
-  const [readCommentIds, setReadCommentIds] = useState(new Set());        // Track which comments have been read
-  const [commentsTotal, setCommentsTotal] = useState(0);                   // Total comment count
-  const [unreadComments, setUnreadComments] = useState(0);                 // Count of unread comments
-  const [commentsInitialLoaded, setCommentsInitialLoaded] = useState(false); // Flag to track initial load
+  const [commentsInitialLoaded, setCommentsInitialLoaded] = useState(false);
+  const [commentsTotal, setCommentsTotal] = useState(0);
+  const [unreadComments, setUnreadComments] = useState(0);
+  const [readCommentIds, setReadCommentIds] = useState(new Set());
+  const [newUsers, setNewUsers] = useState([]);
+  const [readUserIds, setReadUserIds] = useState(new Set());
+  const [unreadUsers, setUnreadUsers] = useState(0);
+  const [usersInitialLoaded, setUsersInitialLoaded] = useState(false);
+const [leaderboard, setLeaderboard] = useState([]);
+const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   // per-button loading keys stored in a Set
   const [loadingKeys, setLoadingKeys] = useState(new Set());
   // helpers to manage per-button loading state
@@ -477,6 +575,7 @@ const Dashboard = () => {
   });
   // ref to keep previous raw count between intervals without causing re-renders
   const prevRawCountRef = useRef(0);
+  const prevUserCountRef = useRef(0);
   // NEW: Add loading state
   const [isLoading, setIsLoading] = useState(true);
   const [loadedDataCount, setLoadedDataCount] = useState(0);
@@ -578,6 +677,62 @@ const Dashboard = () => {
       setIsLoading(false);
     });
   }, []);
+  useEffect(() => {
+  const fetchLeaderboard = async () => {
+    try {
+      setLeaderboardLoading(true);
+      const res = await fetchWithFallback('get_youth_users.php', { cache: 'no-store' });
+      if (!res.ok) throw new Error('Users fetch failed');
+      const users = await res.json();
+
+      // Normalize response
+      let usersList = [];
+      if (Array.isArray(users)) usersList = users;
+      else if (Array.isArray(users.users)) usersList = users.users;
+      else if (Array.isArray(users.youth_users)) usersList = users.youth_users;
+      else if (Array.isArray(users.data)) usersList = users.data;
+
+      // Fetch points for each user
+      const usersWithPoints = await Promise.all(
+        usersList.map(async (user) => {
+          try {
+            const pointsRes = await fetchWithFallback('fetch_total_points.php', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: `user_id=${user.id}`
+            });
+            const pointsData = await pointsRes.json();
+            return {
+              ...user,
+              points: pointsData.total_points || 0
+            };
+          } catch (err) {
+            console.error(`Failed to fetch points for user ${user.id}:`, err);
+            return { ...user, points: 0 };
+          }
+        })
+      );
+
+      // Sort by points descending and take top 10
+      const sorted = usersWithPoints
+        .sort((a, b) => b.points - a.points)
+        .slice(0, 10);
+
+      setLeaderboard(sorted);
+      setLeaderboardLoading(false);
+    } catch (err) {
+      console.error('Error fetching leaderboard:', err);
+      setLeaderboard([]);
+      setLeaderboardLoading(false);
+    }
+  };
+
+  fetchLeaderboard();
+  // Refresh leaderboard every 30 seconds
+  const intervalId = setInterval(fetchLeaderboard, 30000);
+
+  return () => clearInterval(intervalId);
+}, []);
 
   useEffect(() => {
     let mounted = true;
@@ -657,6 +812,66 @@ const Dashboard = () => {
     };
     // include readCommentIds in deps only to get fresh value when user marks reads
   }, [readCommentIds]);
+
+  useEffect(() => {
+    let mounted = true;
+    let intervalId = null;
+
+    async function fetchNewUsers() {
+      try {
+        const res = await fetchWithFallback('get_youth_users.php', { cache: 'no-store' });
+        if (!res.ok) throw new Error('Users fetch failed');
+        const data = await res.json();
+
+        // Normalize response shape
+        let usersList = [];
+        if (Array.isArray(data)) usersList = data;
+        else if (Array.isArray(data.users)) usersList = data.users;
+        else if (Array.isArray(data.youth_users)) usersList = data.youth_users;
+        else if (Array.isArray(data.data)) usersList = data.data;
+        else {
+          for (const k of Object.keys(data || {})) {
+            if (Array.isArray(data[k])) { usersList = data[k]; break; }
+          }
+        }
+
+        if (!mounted) return;
+
+        const rawCount = usersList.length;
+
+        // first-time initialization
+        if (!usersInitialLoaded) {
+          prevUserCountRef.current = rawCount;
+          setUsersInitialLoaded(true);
+          setUnreadUsers(0);
+          setNewUsers([]);
+          return;
+        }
+
+        // detect newly added users
+        if (rawCount > prevUserCountRef.current) {
+          const added = rawCount - prevUserCountRef.current;
+          // Get the latest added users (assuming they're ordered by date)
+          const recentUsers = usersList.slice(0, added);
+          setNewUsers(recentUsers);
+          setUnreadUsers(prev => prev + added);
+        }
+
+        prevUserCountRef.current = rawCount;
+      } catch (err) {
+        console.error('Error fetching new users:', err);
+      }
+    }
+
+    // perform initial fetch and start polling
+    fetchNewUsers();
+    intervalId = setInterval(fetchNewUsers, 15000); // Poll every 15 seconds
+
+    return () => {
+      mounted = false;
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [usersInitialLoaded]);
 
   useEffect(() => {
     localStorage.setItem('skonnect_dark_mode', darkMode);
@@ -740,6 +955,12 @@ const Dashboard = () => {
       setAttendanceModal(true);
     }
   };
+  const maskName = (name) => {
+  if (!name || name.length === 0) return '***';
+  if (name.length <= 2) return '*'.repeat(name.length);
+  // Show first letter and last letter, mask the rest
+  return name[0] + '*'.repeat(name.length - 2) + name[name.length - 1];
+};
 
   // NEW: mark main event as done
   const handleMarkEventDone = async (eventItem) => {
@@ -786,12 +1007,18 @@ const Dashboard = () => {
     setNotificationModal(prev => {
       const next = !prev;
       if (next) {
-        // Clear unread badge
+        // Clear unread badges
         setUnreadComments(0);
-        // Mark all currently loaded comments as read so "new" pill disappears
+        setUnreadUsers(0);
+        // Mark all currently loaded comments & users as read
         setReadCommentIds(prevSet => {
           const newSet = new Set(prevSet);
           comments.forEach(c => newSet.add(c.id));
+          return newSet;
+        });
+        setReadUserIds(prevSet => {
+          const newSet = new Set(prevSet);
+          newUsers.forEach(u => newSet.add(u.id));
           return newSet;
         });
       }
@@ -822,8 +1049,20 @@ const Dashboard = () => {
     window.location.href = '/comments';
   };
 
+  const handleUserNotificationClick = (userId) => {
+    // Mark the clicked user as read
+    setReadUserIds(prev => new Set([...prev, userId]));
+    // Remove from new users list
+    setNewUsers(prev => prev.filter(u => u.id !== userId));
+    // Close modal and navigate to users page
+    setNotificationModal(false);
+    window.location.href = '/youths';
+  };
+
   // Get list of unread comments for badge display
   const unreadCommentsData = comments.filter(c => !readCommentIds.has(c.id));
+  const unreadUsersData = newUsers.filter(u => !readUserIds.has(u.id));
+  const totalUnread = unreadComments + unreadUsers;
 
   return (
     <>
@@ -845,61 +1084,104 @@ const Dashboard = () => {
           <NotificationModalOverlay onClick={() => setNotificationModal(false)}>
             <NotificationModalBox onClick={e => e.stopPropagation()}>
               {/* Modal header with title (close button removed) */}
-              <NotificationHeader>
+               <NotificationHeader>
                 <NotificationTitle>
-                  💬 Comments
+                 🔔 Notifications
                 </NotificationTitle>
               </NotificationHeader>
 
               {/* Scrollable list of notifications */}
               <NotificationList>
-                {comments.length === 0 ? (
+                {comments.length === 0 && newUsers.length === 0 ? (
                   // Empty state message
                   <NotificationEmpty>
                     <div style={{ fontSize: '2.5rem' }}>📭</div>
-                    <p>No comments yet.</p>
+                    <p>No notifications yet.</p>
                     <p style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>
-                      When users leave feedback, it will appear here.
+                      When users leave feedback or new members join, it will appear here.
                     </p>
                   </NotificationEmpty>
                 ) : (
-                  comments.map(comment => {
-                    const isNew = !readCommentIds.has(comment.id);
-                    const commentTime = comment.created_at 
-                      ? new Date(comment.created_at).toLocaleString() 
-                      : 'Unknown time';
+                  <>
+                    {/* New Users Section */}
+                    {newUsers.length > 0 && (
+                      <>
+                        <div style={{ padding: '12px 0', fontSize: '0.85rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          👤 New Members
+                        </div>
+                        {newUsers.map(user => {
+                          const isNew = !readUserIds.has(user.id);
+                          return (
+                            <NotificationItem
+                              key={`user_${user.id}`}
+                              isNew={isNew}
+                              onClick={() => handleUserNotificationClick(user.id)}
+                              aria-label={`New user: ${user.first_name} ${user.last_name}`}
+                            >
+                              <NotificationItemTitle>
+                                <NotificationItemUser>
+                                  {user.first_name} {user.last_name}
+                                </NotificationItemUser>
+                                {isNew && <NotificationNewPill aria-hidden="true">new</NotificationNewPill>}
+                              </NotificationItemTitle>
+                              <NotificationItemBody>
+                                📧 {user.email}
+                              </NotificationItemBody>
+                              <NotificationItemTime>
+                                📱 {user.contact || 'No contact'}
+                              </NotificationItemTime>
+                            </NotificationItem>
+                          );
+                        })}
+                      </>
+                    )}
 
-                    return (
-                      <NotificationItem
-                        key={comment.id}
-                        isNew={isNew}
-                        onClick={() => handleNotificationClick(comment.id)}
-                        aria-label={`Open comment from ${comment.name || 'Anonymous'}`}
-                      >
-                        <NotificationItemTitle>
-                          <NotificationItemUser>
-                            {'Anonymous'}
-                          </NotificationItemUser>
+                    {/* Comments Section */}
+                    {comments.length > 0 && (
+                      <>
+                        <div style={{ padding: '12px 0', fontSize: '0.85rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          💬 Comments
+                        </div>
+                        {comments.map(comment => {
+                          const isNew = !readCommentIds.has(comment.id);
+                          const commentTime = comment.created_at 
+                            ? new Date(comment.created_at).toLocaleString() 
+                            : 'Unknown time';
 
-                          {isNew && <NotificationNewPill aria-hidden="true">new</NotificationNewPill>}
-                        </NotificationItemTitle>
+                          return (
+                            <NotificationItem
+                              key={comment.id}
+                              isNew={isNew}
+                              onClick={() => handleNotificationClick(comment.id)}
+                              aria-label={`Open comment from ${comment.name || 'Anonymous'}`}
+                            >
+                              <NotificationItemTitle>
+                                <NotificationItemUser>
+                                  {'Anonymous'}
+                                </NotificationItemUser>
 
-                        <NotificationItemBody>
-                          {comment.message 
-                            ? comment.message.length > 160 ? comment.message.substring(0, 160) + '…' : comment.message
-                            : '📝 No message content'
-                          }
-                        </NotificationItemBody>
+                                {isNew && <NotificationNewPill aria-hidden="true">new</NotificationNewPill>}
+                              </NotificationItemTitle>
 
-                        <NotificationItemTime>⏰ {commentTime}</NotificationItemTime>
-                      </NotificationItem>
-                    );
-                  })
+                              <NotificationItemBody>
+                                {comment.message 
+                                  ? comment.message.length > 160 ? comment.message.substring(0, 160) + '…' : comment.message
+                                  : '📝 No message content'
+                                }
+                              </NotificationItemBody>
+
+                              <NotificationItemTime>⏰ {commentTime}</NotificationItemTime>
+                            </NotificationItem>
+                          );
+                        })}
+                      </>
+                    )}
+                  </>
                 )}
               </NotificationList>
 
               {/* Footer with call-to-action */}
-              {comments.length > 0 && (
+              {(comments.length > 0 || newUsers.length > 0) && (
                 <NotificationFooter>
                   <FooterCTA 
                     onClick={() => {
@@ -907,7 +1189,7 @@ const Dashboard = () => {
                       window.location.href = '/comments';
                     }}
                   >
-                    View All Comments →
+                    View All Notifications →
                   </FooterCTA>
                 </NotificationFooter>
               )}
@@ -925,16 +1207,16 @@ const Dashboard = () => {
           </DashboardTitle>
 
           {/* ---------- IMPROVED: Notification Bell Button (top-right corner) ---------- */}
-        <NotificationButton
-                 aria-label="Comments notifications"
-                 onClick={handleToggleNotificationModal}
-                 style={{ position: 'relative' }}
-                 title={unreadComments > 0 ? `${unreadComments} new comment(s)` : 'No new comments'}
-               >
-                 <FaBell />
-                 {unreadComments > 0 && (
-                   <NotificationBadge>{unreadComments > 99 ? '99+' : unreadComments}</NotificationBadge>
-                 )}
+               <NotificationButton
+          aria-label="Notifications"
+          onClick={handleToggleNotificationModal}
+          style={{ position: 'relative' }}
+          title={totalUnread > 0 ? `${totalUnread} new notification(s)` : 'No new notifications'}
+        >
+          <FaBell />
+          {totalUnread > 0 && (
+            <NotificationBadge>{totalUnread > 99 ? '99+' : totalUnread}</NotificationBadge>
+          )}
         </NotificationButton>
 
         </Topbar>
@@ -987,6 +1269,54 @@ const Dashboard = () => {
               </Card>
             ))}
           </Grid>
+
+          {/* NEW: Leaderboard Section */}
+          <LeaderboardContainer>
+            <LeaderboardTitle>
+              🏆 Top Performers
+            </LeaderboardTitle>
+            
+            {leaderboardLoading ? (
+              <p style={{ textAlign: 'center', color: '#64748b', padding: '2rem 0' }}>
+                Loading leaderboard...
+              </p>
+            ) : leaderboard.length === 0 ? (
+              <p style={{ textAlign: 'center', color: '#64748b', padding: '2rem 0' }}>
+                No users with points yet.
+              </p>
+            ) : (
+              <LeaderboardTable>
+                <LeaderboardThead>
+                  <tr>
+                    <th style={{ width: '10%' }}>Rank</th>
+                    <th style={{ width: '40%' }}>Name</th>
+                    <th style={{ width: '30%' }}>Email</th>
+                    <th style={{ width: '20%', textAlign: 'right' }}>Points</th>
+                  </tr>
+                </LeaderboardThead>
+             <LeaderboardTbody>
+  {leaderboard.map((user, idx) => (
+    <tr key={user.id}>
+      <td>
+        <RankBadge rank={idx + 1}>
+          {idx + 1}
+        </RankBadge>
+      </td>
+      <td>
+        <strong>
+          {maskName(user.first_name)} {maskName(user.last_name)}
+        </strong>
+      </td>
+      <td>{maskName(user.email)}</td>
+      <td style={{ textAlign: 'right' }}>
+        <PointsBadge>{user.points}</PointsBadge>
+      </td>
+    </tr>
+  ))}
+</LeaderboardTbody>
+              </LeaderboardTable>
+            )}
+          </LeaderboardContainer>
 
           {/* Add Events List */}
           <EventList>
@@ -1137,7 +1467,7 @@ const Dashboard = () => {
                       ))}
                     </ParticipantCard>
                   ))
-                )}
+               )}
                 <Button onClick={() => setParticipantsModal(false)} style={{ marginTop: '1.5rem', width: '100%' }}>
                   Close
                 </Button>
