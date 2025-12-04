@@ -716,7 +716,7 @@ const [leaderboardLoading, setLeaderboardLoading] = useState(false);
       // Sort by points descending and take top 10
       const sorted = usersWithPoints
         .sort((a, b) => b.points - a.points)
-        .slice(0, 10);
+        .slice(0, 5);
 
       setLeaderboard(sorted);
       setLeaderboardLoading(false);
