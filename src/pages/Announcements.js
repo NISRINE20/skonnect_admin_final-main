@@ -295,7 +295,6 @@ export default function Announcements() {
         setItemToDelete(null);
       }
     } else if (itemToDelete.type === "highlight") {
-      // use same modal confirmation flow for highlights
       try {
         const res = await fetchWithFallback('delete_highlight.php', {
           method: 'POST',
@@ -304,10 +303,11 @@ export default function Announcements() {
         });
         if (!res || !res.ok) throw new Error('Delete highlight failed');
         const result = await res.json();
-        if (result.success) {
+        // Check for 'status' === 'success' instead of 'success' property
+        if (result.status === 'success') {
           setHighlights(prev => prev.filter(h => h.id !== itemToDelete.id));
         } else {
-          alert(result.error || 'Failed to delete highlight');
+          alert(result.message || 'Failed to delete highlight');
         }
       } catch (err) {
         console.error('Delete highlight err:', err);
