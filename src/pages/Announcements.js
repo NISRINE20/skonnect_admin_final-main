@@ -141,13 +141,14 @@ export default function Announcements() {
       });
       if (!res || !res.ok) throw new Error('Post failed');
       const data = await res.json();
-      if (data.success) {
+      // accept either legacy `success` or `status === 'success'`
+      if (data.success || data.status === 'success') {
         await fetchAnnouncements();
         setTitle('');
         setCategory('General');
         setMessage('');
       } else {
-        console.error('Failed to post announcement:', data.error);
+        console.error('Failed to post announcement:', data.error || data.message);
       }
     } catch (error) {
       console.error("Error posting announcement:", error);
@@ -369,20 +370,21 @@ export default function Announcements() {
           if (!title || !message) return;
           setPostingAnnouncement(true);
           try {
-            const response = await fetch("https://vynceianoani.helioho.st/skonnect-api/announcements.php", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
+            const res = await fetchWithFallback('announcements.php', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ title, message, type: category }),
             });
-
-            const data = await response.json();
-            if (data.success) {
+            if (!res || !res.ok) throw new Error('Post failed');
+            const data = await res.json();
+            // accept either legacy `success` or `status === 'success'`
+            if (data.success || data.status === 'success') {
               await fetchAnnouncements();
-              setTitle("");
-              setCategory("General");
-              setMessage("");
+              setTitle('');
+              setCategory('General');
+              setMessage('');
             } else {
-              console.error("Failed to post announcement:", data.error);
+              console.error('Failed to post announcement:', data.error || data.message);
             }
           } catch (error) {
             console.error("Error posting announcement:", error);
