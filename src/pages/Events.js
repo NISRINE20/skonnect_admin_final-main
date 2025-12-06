@@ -163,7 +163,7 @@ const Events = () => {
   const fetchEvents = async () => {
     setLoadingEvents(true);
     try {
-      const res = await fetchWithFallback('get_main_events.php');
+      const res = await fetchWithFallback('get_upcoming_main_events.php');
       if (!res || !res.ok) throw new Error('Events server unreachable');
       const data = await res.json();
       console.log('✅ Fetched main events:', data);

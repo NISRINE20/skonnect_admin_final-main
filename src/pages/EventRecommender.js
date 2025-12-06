@@ -253,63 +253,67 @@ function EventRecommendations() {
 
   // Fetch recommendations, optionally ignoring cache
   const fetchRecommendations = async (ignoreCache = false) => {
-    try {
-      setLoading(true);
-      setError(null);
-      setSuccess(null);
-      const url = ignoreCache
-        ? "https://mdj3530-skonnect-recommender.hf.space/recommend?ignore_cache=true"
-        : "https://mdj3530-skonnect-recommender.hf.space/recommend";
-      const response = await fetch(url);
-      if (!response.ok) throw new Error("Network response was not ok");
-      const data = await response.json();
+  try {
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
 
-      // Support both shapes: { recommendations: [...] } OR { recommended: [...], not_recommended: [...] }
-      let list = [];
-      if (Array.isArray(data.recommendations)) {
-        list = data.recommendations;
-      } else {
-        const a = Array.isArray(data.recommended) ? data.recommended : [];
-        const b = Array.isArray(data.not_recommended) ? data.not_recommended : [];
-        list = [...a, ...b];
-      }
+    const url = ignoreCache
+      ? "https://mdj3530-skonnect-recommender.hf.space/events/merged?ignore_cache=true"
+      : "https://mdj3530-skonnect-recommender.hf.space/events/merged";
 
-      // Normalize items
-      const normalized = (list || []).map(it => {
-        const predicted = Number(it.predicted_participants ?? it.participants ?? 0);
-        // Base confidence on participants: scale to [0,1], cap at 1.0.
-        // Here 1000 participants => 100% confidence. Adjust divisor if you want a different scaling.
-        const probability = Math.min(1, Math.max(0, predicted / 1000));
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("Network response was not ok");
 
-        // If predicted participants < 500, automatically mark as not recommended.
-        // Otherwise, prefer an explicit boolean 'recommended' if provided, else derive from probability > 0.5.
-        const recommendedFromData = typeof it.recommended === "boolean" ? it.recommended : (probability > 0.5);
-        const recommended = predicted < 500 ? false : recommendedFromData;
+    const data = await response.json();
 
-        return {
-          event: it.event ?? it.name ?? it.title ?? "Unnamed Event",
-          description: it.description ?? "",
-          predicted_participants: predicted,
-          probability,
-          recommended
-        };
-      });
+    // NEW BACKEND FORMAT:
+    // {
+    //    real_events: [...],
+    //    ai_events: [...],
+    //    total: 15
+    // }
 
-      // Sort by probability desc
-      normalized.sort((x, y) => y.probability - x.probability);
+    const realEvents = Array.isArray(data.real_events) ? data.real_events : [];
+    const aiEvents = Array.isArray(data.ai_events) ? data.ai_events : [];
 
-      setEvents(normalized);
-      setMonth(data.month || null);
-      setCached(Boolean(data.cached));
-      setError(null);
-    } catch (error) {
-      console.error("Error fetching event recommendations:", error);
-      setError(error.message || "Failed to fetch recommendations");
-      setEvents([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+    // Convert real_events → normalize structure
+    const normReal = realEvents.map(e => ({
+      event: e.title ?? e.event ?? "Unnamed Event",
+      description: e.description ?? "",
+      predicted_participants: Number(e.average_rating ?? 0) * 100,
+      probability: e.average_rating ? e.average_rating / 5 : 0.3,
+      recommended: e.recommendation === "Recommended"
+    }));
+
+    // Convert ai_events → already normalized
+    const normAI = aiEvents.map(e => ({
+      event: e.event,
+      description: e.description,
+      predicted_participants: e.predicted_participants,
+      probability: e.probability,
+      recommended: e.predicted_participants >= 500
+    }));
+
+    // Combine both sets
+    const merged = [...normReal, ...normAI];
+
+    // Sort by confidence score DESC
+    merged.sort((a, b) => b.probability - a.probability);
+
+    setEvents(merged);
+    setMonth(data.month || null);
+    setCached(false);
+    setError(null);
+
+  } catch (error) {
+    console.error("Error fetching event recommendations:", error);
+    setError(error.message || "Failed to fetch recommendations");
+    setEvents([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Clear cache
   const clearCache = async () => {
