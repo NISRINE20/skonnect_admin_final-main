@@ -3,10 +3,13 @@ import styled from "styled-components";
 import SidebarNav from "../components/Sidebar";
 import { FaTrash } from "react-icons/fa";
 
+// ==============================
+// Styled Components
+// ==============================
 const Layout = styled.div`
   display: flex;
   min-height: 100vh;
-  background: ${({ dark }) => (dark ? '#18181b' : '#f3f5f9')};
+  background: ${({ dark }) => (dark ? "#18181b" : "#f3f5f9")};
 `;
 
 const Container = styled.div`
@@ -17,7 +20,7 @@ const Container = styled.div`
 
 const Title = styled.h2`
   font-size: 1.75rem;
-  color: ${({ dark }) => (dark ? '#f3f5f9' : '#1f2937')};
+  color: ${({ dark }) => (dark ? "#f3f5f9" : "#1f2937")};
   font-weight: 700;
   margin-bottom: 1.5rem;
 `;
@@ -51,7 +54,6 @@ const Button = styled.button`
 
 const DangerButton = styled(Button)`
   background: #ef4444;
-
   &:hover:not(:disabled) {
     background: #dc2626;
   }
@@ -69,7 +71,7 @@ const MetadataContainer = styled.div`
   gap: 1.5rem;
   margin-bottom: 1.5rem;
   padding: 1rem;
-  background: ${({ dark }) => (dark ? '#1f2937' : '#f0f4f8')};
+  background: ${({ dark }) => (dark ? "#1f2937" : "#f0f4f8")};
   border-radius: 0.5rem;
   font-size: 0.875rem;
   align-items: center;
@@ -78,11 +80,11 @@ const MetadataContainer = styled.div`
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    color: ${({ dark }) => (dark ? '#cbd5e1' : '#6b7280')};
+    color: ${({ dark }) => (dark ? "#cbd5e1" : "#6b7280")};
   }
 
   strong {
-    color: ${({ dark }) => (dark ? '#f3f5f9' : '#1f2937')};
+    color: ${({ dark }) => (dark ? "#f3f5f9" : "#1f2937")};
     font-weight: 600;
   }
 `;
@@ -90,7 +92,7 @@ const MetadataContainer = styled.div`
 const LoadingOverlay = styled.div`
   position: fixed;
   inset: 0;
-  background: rgba(15,23,42,0.45);
+  background: rgba(15, 23, 42, 0.45);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -102,16 +104,18 @@ const Spinner = styled.div`
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  border: 4px solid rgba(255,255,255,0.12);
+  border: 4px solid rgba(255, 255, 255, 0.12);
   border-top-color: #fff;
   animation: spin 0.9s linear infinite;
-  box-shadow: 0 6px 18px rgba(2,6,23,0.12);
   margin-bottom: 12px;
 
-  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
 `;
 
-/* inline small spinner used inside buttons and metadata */
 const ButtonSpinner = styled.span`
   display: inline-block;
   width: 14px;
@@ -122,7 +126,11 @@ const ButtonSpinner = styled.span`
   animation: spin 0.9s linear infinite;
   vertical-align: middle;
   margin-right: 8px;
-  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
 `;
 
 const LoadingText = styled.div`
@@ -133,7 +141,7 @@ const LoadingText = styled.div`
 `;
 
 const LoadingSubtext = styled.div`
-  color: rgba(255,255,255,0.9);
+  color: rgba(255, 255, 255, 0.9);
   font-size: 0.95rem;
 `;
 
@@ -161,11 +169,11 @@ const RecommendationGrid = styled.div`
 `;
 
 const RecommendationCard = styled.div`
-  background: ${({ dark }) => (dark ? '#1f2937' : 'white')};
+  background: ${({ dark }) => (dark ? "#1f2937" : "white")};
   border-radius: 0.75rem;
   padding: 1.5rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  border-left: 4px solid ${({ recommended }) => (recommended ? '#10b981' : '#ef4444')};
+  border-left: 4px solid ${({ recommended }) => (recommended ? "#10b981" : "#ef4444")};
   transition: all 0.3s ease;
 
   &:hover {
@@ -175,7 +183,7 @@ const RecommendationCard = styled.div`
 `;
 
 const EventName = styled.h3`
-  color: ${({ dark }) => (dark ? '#f3f5f9' : '#1f2937')};
+  color: ${({ dark }) => (dark ? "#f3f5f9" : "#1f2937")};
   font-size: 1.125rem;
   font-weight: 600;
   margin-bottom: 0.75rem;
@@ -190,21 +198,21 @@ const InfoRow = styled.div`
 `;
 
 const Label = styled.span`
-  color: ${({ dark }) => (dark ? '#9ca3af' : '#6b7280')};
+  color: ${({ dark }) => (dark ? "#9ca3af" : "#6b7280")};
   font-weight: 500;
 `;
 
 const Value = styled.span`
-  color: ${({ dark }) => (dark ? '#f3f5f9' : '#1f2937')};
+  color: ${({ dark }) => (dark ? "#f3f5f9" : "#1f2937")};
   font-weight: 600;
 `;
 
 const ConfidenceBadge = styled.span`
   display: inline-block;
-  background: ${props => {
-    if (props.confidence >= 0.8) return '#10b981';
-    if (props.confidence >= 0.6) return '#f59e0b';
-    return '#ef4444';
+  background: ${(props) => {
+    if (props.confidence >= 0.8) return "#10b981";
+    if (props.confidence >= 0.6) return "#f59e0b";
+    return "#ef4444";
   }};
   color: white;
   padding: 0.35rem 0.75rem;
@@ -215,7 +223,7 @@ const ConfidenceBadge = styled.span`
 
 const RecommendedTag = styled.span`
   display: inline-block;
-  background: ${p => (p.recommended ? '#16a34a' : '#6b7280')};
+  background: ${(p) => (p.recommended ? "#16a34a" : "#6b7280")};
   color: white;
   padding: 0.25rem 0.5rem;
   border-radius: 0.5rem;
@@ -230,118 +238,106 @@ const EmptyState = styled.div`
   color: #6b7280;
 `;
 
-// Spinner animation
-const spin = `
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
-`;
-
+// ==============================
+// Main Component
+// ==============================
 function EventRecommendations() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
-  const [month, setMonth] = useState(null);
   const [cached, setCached] = useState(false);
   const [clearingCache, setClearingCache] = useState(false);
-  const [darkMode] = useState(() => {
-    const saved = localStorage.getItem("skonnect_dark_mode");
-    return saved === "true";
-  });
+  const [darkMode] = useState(() => localStorage.getItem("skonnect_dark_mode") === "true");
 
-  // Fetch recommendations, optionally ignoring cache
+  // always get current month
+  const [month] = useState(new Date().toLocaleString("default", { month: "long" }));
+
+  // ==============================
+  // Fetch Recommendations
+  // ==============================
   const fetchRecommendations = async (ignoreCache = false) => {
-  try {
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
+    try {
+      setLoading(true);
+      setError(null);
+      setSuccess(null);
 
-    const url = ignoreCache
-      ? "https://mdj3530-skonnect-recommender.hf.space/events/merged?ignore_cache=true"
-      : "https://mdj3530-skonnect-recommender.hf.space/events/merged";
+      const url = ignoreCache
+        ? "https://mdj3530-skonnect-recommender.hf.space/events/merged?ignore_cache=true"
+        : "https://mdj3530-skonnect-recommender.hf.space/events/merged";
 
-    const response = await fetch(url);
-    if (!response.ok) throw new Error("Network response was not ok");
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Network response was not ok");
 
-    const data = await response.json();
+      const data = await res.json();
+      const realEvents = Array.isArray(data.real_events) ? data.real_events : [];
+      const aiEvents = Array.isArray(data.ai_events) ? data.ai_events : [];
 
-    // NEW BACKEND FORMAT:
-    // {
-    //    real_events: [...],
-    //    ai_events: [...],
-    //    total: 15
-    // }
+      // normalize real events
+      const normReal = realEvents.map((e) => ({
+        event: e.title ?? e.event ?? "Unnamed Event",
+        description: e.description ?? "",
+        predicted_participants: Number(e.average_rating ?? 0) * 100,
+        probability: e.average_rating ? e.average_rating / 5 : 0.3,
+        recommended: e.recommendation === "Recommended",
+      }));
 
-    const realEvents = Array.isArray(data.real_events) ? data.real_events : [];
-    const aiEvents = Array.isArray(data.ai_events) ? data.ai_events : [];
+      // normalize AI events
+      const normAI = aiEvents.map((e) => ({
+        event: e.event,
+        description: e.description,
+        predicted_participants: e.predicted_participants,
+        probability: e.probability,
+        recommended: e.predicted_participants >= 500,
+      }));
 
-    // Convert real_events → normalize structure
-    const normReal = realEvents.map(e => ({
-      event: e.title ?? e.event ?? "Unnamed Event",
-      description: e.description ?? "",
-      predicted_participants: Number(e.average_rating ?? 0) * 100,
-      probability: e.average_rating ? e.average_rating / 5 : 0.3,
-      recommended: e.recommendation === "Recommended"
-    }));
+      const merged = [...normReal, ...normAI].sort((a, b) => b.probability - a.probability);
 
-    // Convert ai_events → already normalized
-    const normAI = aiEvents.map(e => ({
-      event: e.event,
-      description: e.description,
-      predicted_participants: e.predicted_participants,
-      probability: e.probability,
-      recommended: e.predicted_participants >= 500
-    }));
+      setEvents(merged);
+      setCached(false);
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "Failed to fetch recommendations");
+      setEvents([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    // Combine both sets
-    const merged = [...normReal, ...normAI];
-
-    // Sort by confidence score DESC
-    merged.sort((a, b) => b.probability - a.probability);
-
-    setEvents(merged);
-    setMonth(data.month || null);
-    setCached(false);
-    setError(null);
-
-  } catch (error) {
-    console.error("Error fetching event recommendations:", error);
-    setError(error.message || "Failed to fetch recommendations");
-    setEvents([]);
-  } finally {
-    setLoading(false);
-  }
-};
-
-  // Clear cache
+  // ==============================
+  // Clear Cache
+  // ==============================
   const clearCache = async () => {
     try {
       setClearingCache(true);
       setError(null);
       setSuccess(null);
-      const response = await fetch("https://mdj3530-skonnect-recommender.hf.space/clear_cache", { method: "POST" });
-      if (!response.ok) throw new Error("Failed to clear cache");
-      const data = await response.json();
+
+      const res = await fetch("https://mdj3530-skonnect-recommender.hf.space/clear_cache", {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error("Failed to clear cache");
+
+      const data = await res.json();
       setSuccess(data.message || "Cache cleared successfully!");
       setCached(false);
-      // Refresh recommendations after clearing cache
+
       setTimeout(() => fetchRecommendations(true), 500);
     } catch (err) {
-      console.error("Error clearing cache:", err);
+      console.error(err);
       setError(err.message || "Failed to clear cache");
     } finally {
       setClearingCache(false);
     }
   };
 
-  // Initial fetch on component mount
+  // ==============================
+  // Effects
+  // ==============================
   useEffect(() => {
     fetchRecommendations();
   }, []);
 
-  // Clear success message after 3 seconds
   useEffect(() => {
     if (success) {
       const timer = setTimeout(() => setSuccess(null), 3000);
@@ -349,6 +345,9 @@ function EventRecommendations() {
     }
   }, [success]);
 
+  // ==============================
+  // Render
+  // ==============================
   return (
     <Layout dark={darkMode}>
       <SidebarNav darkMode={darkMode} />
@@ -358,31 +357,30 @@ function EventRecommendations() {
         <ButtonContainer>
           <Button onClick={() => fetchRecommendations(true)} disabled={loading}>
             {loading && <ButtonSpinner />}
-            {loading ? 'Loading...' : 'Generate New Recommendations'}
+            {loading ? "Loading..." : "Generate New Recommendations"}
           </Button>
           <DangerButton onClick={clearCache} disabled={clearingCache || !cached}>
             {clearingCache && <ButtonSpinner />}
             <FaTrash />
-            {clearingCache ? 'Clearing...' : 'Clear Cache'}
+            {clearingCache ? "Clearing..." : "Clear Cache"}
           </DangerButton>
         </ButtonContainer>
 
-        {/* Metadata */}
-        {(month || cached !== null) && (
-          <MetadataContainer dark={darkMode}>
-            {month && <span>Month: <strong>{month}</strong></span>}
-            <span>
-              {cached ? (
-                <>
-                  <ButtonSpinner />
-                  <strong>Cached Data</strong>
-                </>
-              ) : (
-                <strong>Live Generation</strong>
-              )}
-            </span>
-          </MetadataContainer>
-        )}
+        <MetadataContainer dark={darkMode}>
+          <span>
+            Month: <strong>{month}</strong>
+          </span>
+          <span>
+            {cached ? (
+              <>
+                <ButtonSpinner />
+                <strong>Cached Data</strong>
+              </>
+            ) : (
+              <strong>Live Generation</strong>
+            )}
+          </span>
+        </MetadataContainer>
 
         {success && <SuccessText>{success}</SuccessText>}
         {loading && (
@@ -395,9 +393,7 @@ function EventRecommendations() {
         {error && <ErrorText>Error: {error}</ErrorText>}
 
         {!loading && !error && events.length === 0 && (
-          <EmptyState>
-            <p>No recommendations available at this time.</p>
-          </EmptyState>
+          <EmptyState>No recommendations available at this time.</EmptyState>
         )}
 
         {!loading && !error && events.length > 0 && (
@@ -424,9 +420,9 @@ function EventRecommendations() {
                 </InfoRow>
 
                 {e.description && (
-                  <InfoRow style={{ flexDirection: 'column', alignItems: 'flex-start', marginTop: '0.75rem' }}>
+                  <InfoRow style={{ flexDirection: "column", alignItems: "flex-start", marginTop: 12 }}>
                     <Label dark={darkMode}>Description:</Label>
-                    <Value dark={darkMode} style={{ fontSize: '0.875rem', marginTop: '0.35rem', lineHeight: '1.4' }}>
+                    <Value dark={darkMode} style={{ fontSize: 0.875 + "rem", marginTop: 4, lineHeight: 1.4 }}>
                       {e.description}
                     </Value>
                   </InfoRow>
@@ -436,7 +432,6 @@ function EventRecommendations() {
           </RecommendationGrid>
         )}
       </Container>
-      {/* removed legacy spin CSS in favor of styled components above */}
     </Layout>
   );
 }
