@@ -116,7 +116,7 @@ const SidebarNav = ({ darkMode }) => {
             { href: '/youths', icon: <FaUsers />, label: 'Youths' },
             { href: '/calendar', icon: <FaCalendar />, label: 'Calendar' },
             { href: '/announcements', icon: <FaBullhorn />, label: 'Announcements' },
-            { href: '/event-recommender', icon: <FaGift />, label: 'Event Recommender' },
+            { href: '/event-recommender', icon: <FaChartBar />, label: 'Event Stats' },
             { href: '/events', icon: <FaGift />, label: 'Events' },
             { href: '/analytics', icon: <FaChartBar />, label: 'Analytics' },
             { href: '/comments', icon: <FaComments />, label: 'Comments' }
