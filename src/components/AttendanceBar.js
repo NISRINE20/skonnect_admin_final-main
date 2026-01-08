@@ -16,6 +16,7 @@ export default function AttendanceChart({ data }) {
           <YAxis />
           <Tooltip />
           <Legend />
+          <Bar dataKey="year_2024" fill="#f59e0b" name="2024" />
           <Bar dataKey="last_year" fill="#94a3b8" name="Last Year" />
           <Bar dataKey="current_year" fill="#2563eb" name="Current Year" />
         </BarChart>

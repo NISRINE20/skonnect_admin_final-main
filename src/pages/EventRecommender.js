@@ -144,7 +144,21 @@ export default function EventAnalytics() {
         const res = await fetchWithFallback('event_attendance_analytics.php');
         if (!res || !res.ok) throw new Error('Failed to load analytics');
         const json = await res.json();
-        setData(Array.isArray(json) ? json : (json.data || []));
+        // Ensure we have an array of events
+        const items = Array.isArray(json) ? json : (json.data || []);
+        // If an event is named exactly "KK GENERAL ASSEMBLY 2025", create a separate 2024 column with 400 attendance
+        // Also add 2024 attendance (150) for "YEAR END GATHERING OF THE SK BUHANGIN PROPER"
+        const processed = items.map(ev => {
+          const title = (ev.title || '').toString().trim().toUpperCase();
+          if (title === 'KK GENERAL ASSEMBLY 2025') {
+            return { ...ev, year_2024: 400 };
+          }
+          if (title === 'YEAR END GATHERING OF THE SK BUHANGIN PROPER') {
+            return { ...ev, year_2024: 150 };
+          }
+          return ev;
+        });
+        setData(processed);
       } catch (err) {
         console.error('Error loading event analytics:', err);
         setData([]);
@@ -223,6 +237,7 @@ export default function EventAnalytics() {
             <thead>
               <tr>
                 <Th>Event</Th>
+                <Th>2024</Th>
                 <Th>Last Year</Th>
                 <Th>Current Year</Th>
                 <Th>Growth</Th>
@@ -242,6 +257,7 @@ export default function EventAnalytics() {
                     style={{ cursor: 'pointer' }}
                   >
                     <Td>{event.title}</Td>
+                    <Td>{event.year_2024 ?? '—'}</Td>
                     <Td>{event.last_year}</Td>
                     <Td>{event.current_year}</Td>
                     <Td>
